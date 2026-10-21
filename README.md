@@ -16,7 +16,7 @@
 
 ## 1. 상태
 
-5단계(README 와 배포) 진행 중이다. MVP 기능(4단계)은 모두 구현되어 있다. 진행 상황은 HANDOFF.md 를 본다.
+MVP 기능은 모두 구현되어 있고 README 사용법과 배포 방법을 작성했다. GitHub Pages 실제 배포는 사용자 승인 뒤 한다. 진행 상황은 HANDOFF.md 를 본다.
 
 ## 2. 기능
 
@@ -152,7 +152,61 @@ localhost 에 저장한 데이터는 배포 주소의 데이터와 출처가 달
 
 ## 6. 배포
 
-GitHub Pages 정적 호스팅으로 배포한다. 배포 절차는 5단계(T5-02)에서 이 절에 작성한다.
+GitHub Pages 정적 호스팅으로 배포한다. 빌드 단계, 서버 코드, package.json 이 없으므로 저장소의 파일이 그대로 게시된다(docs/01_요구사항.md 6절 NFR-01).
+
+준비물은 GitHub 계정과 git 이다. 저장소를 명령으로 만들려면 GitHub CLI(`gh`)를 설치하고 `gh auth login` 으로 로그인해 둔다.
+
+### 6.1 배포 절차
+
+1. GitHub 에 저장소를 만든다. 무료 계정은 공개(Public) 저장소에서 Pages 를 쓸 수 있다. 아래 두 방법 중 하나를 쓴다.
+   - 웹 화면: github.com 에 로그인하고 오른쪽 위 "+" -> "New repository" 를 누른다. Repository name 에 저장소 이름(예: portfolio-tracker)을 넣고 Public 을 고른다. 로컬 저장소에 이미 커밋이 있으므로 README, .gitignore, license 는 추가하지 않는다(추가하면 원격에 다른 커밋이 생겨 첫 push 가 거부된다). "Create repository" 를 누른 뒤 2번으로 간다.
+   - gh CLI: 저장소 루트에서 아래 명령을 실행한다. 저장소 생성, 원격 origin 추가, 현재 브랜치 push 를 한 번에 하므로 2번을 건너뛰고 3번으로 간다.
+
+     ```
+     gh repo create {저장소 이름} --public --source=. --remote=origin --push
+     ```
+
+2. 로컬 저장소에 원격을 추가하고 main 브랜치를 push 한다. 현재 브랜치가 main 인지 `git branch --show-current` 로 먼저 확인한다.
+
+   ```
+   git remote add origin https://github.com/{사용자 이름}/{저장소 이름}.git
+   git push -u origin main
+   ```
+
+3. GitHub 의 저장소 페이지에서 Settings -> Pages 를 연다. Build and deployment 에서 Source 를 "Deploy from a branch" 로, Branch 를 "main" 으로, 폴더를 "/ (root)" 로 고르고 Save 를 누른다.
+4. 게시를 기다린다. 저장소 Actions 탭의 "pages build and deployment" 실행이 끝나면(보통 몇 분) Settings -> Pages 위쪽에 게시 주소가 나온다.
+5. `https://{사용자 이름}.github.io/{저장소 이름}/` 을 연다. 실행이 끝나기 전에는 404 가 나올 수 있으므로 몇 분 뒤 다시 연다.
+6. 6.4 의 확인을 한다.
+
+이후 main 브랜치에 push 할 때마다 같은 방식으로 다시 게시된다. 반영에도 몇 분이 걸리며, 이전 화면이 보이면 Ctrl+F5 로 새로 불러온다. 저장소 이름을 `{사용자 이름}.github.io` 로 만들면 하위 경로 없는 사용자 사이트가 되는데, 이 README 는 하위 경로가 붙는 프로젝트 페이지를 기준으로 한다.
+
+### 6.2 하위 경로와 저장 데이터
+
+- 모든 파일 경로가 상대 경로이므로(docs/02_설계문서.md 1.1) `/{저장소 이름}/` 하위 경로에서 그대로 동작한다.
+- 같은 사용자 주소(`{사용자 이름}.github.io`) 아래 다른 프로젝트 페이지와 localStorage 출처를 공유한다(docs/01_요구사항.md 6.1 4번). 저장 키에 `portfolio-tracker:` 접두어를 써서 구분하지만, 브라우저에서 이 출처의 사이트 데이터를 지우면 다른 프로젝트 페이지의 데이터와 함께 지워진다. JSON 내보내기로 백업한다(4절).
+- 배포 주소의 데이터와 localhost 의 데이터는 출처가 달라 서로 보이지 않는다. 옮기려면 JSON 내보내기와 불러오기를 쓴다.
+
+### 6.3 Jekyll 과 .nojekyll
+
+"Deploy from a branch" 는 게시 전에 저장소를 Jekyll 로 처리한다. Jekyll 은 밑줄(_)로 시작하는 파일과 폴더를 게시하지 않고, Markdown 파일과 YAML 머리(`---`)가 있는 파일을 변환한다. 이 저장소에는 밑줄로 시작하는 파일과 폴더가 없고 앱 파일(index.html, css/style.css, js/*.js)에는 YAML 머리가 없어 그대로 게시되므로 `.nojekyll` 없이 배포한다.
+
+Actions 탭의 "pages build and deployment" 가 Jekyll 처리 단계에서 실패하면 저장소 루트에 빈 `.nojekyll` 파일을 추가해 Jekyll 처리를 끄는 방법이 있다. 이 파일은 정해진 파일구조(AGENTS.md 4절) 밖이므로 작업자는 실제로 추가하기 전에 사용자 승인을 받는다(docs/05_작업지시서.md T5-02).
+
+### 6.4 배포 후 확인
+
+게시 주소에서 직접 확인한다.
+
+1. 화면 하단에 고지 문구 "계산 결과는 참고용이며 투자 판단의 책임은 본인에게 있습니다." 가 보인다.
+2. 거래 1건(예: 3.2 의 현금 입금. 종목명 현금, 자산군 현금, 매수, 수량 1000000, 가격 1)을 추가하고 새로고침한다. 거래 내역과 보유 현황에 그대로 남아 있으면 저장이 동작한다. 확인한 뒤 그 거래를 "삭제" 로 지운다.
+3. 브라우저 개발자 도구(F12)의 Network 탭을 열고 새로고침한다. 모든 요청이 `{사용자 이름}.github.io` 로만 가야 한다(외부 요청 0 건, docs/01_요구사항.md 6절 NFR-07). Console 탭에 오류가 없어야 한다.
+
+화면 검증 스크립트로도 확인한다. 준비 명령은 docs/05_작업지시서.md 2.3 을 본다.
+
+```
+py skills/ui-verify/scripts/verify_ui.py T4-07 T4-13 T4-14 T4-15 --base-url https://{사용자 이름}.github.io/{저장소 이름}/
+```
+
+`--base-url` 을 주면 로컬 서버를 띄우지 않고 그 주소를 검사한다. 외부 요청 판정의 허용 출처는 그 주소의 출처이고, 모든 시나리오가 통과하면 종료 코드가 0 이다(skills/ui-verify/SKILL.md). 스크립트는 새 브라우저 환경에서 실행되므로 평소 쓰는 브라우저의 데이터는 바뀌지 않는다. 지원 브라우저 범위는 docs/01_요구사항.md 6절 NFR-02 를 본다.
 
 ## 7. 폴더 구조
 
