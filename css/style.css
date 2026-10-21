@@ -336,6 +336,24 @@ tfoot td {
   font-weight: var(--font-weight-bold);
 }
 
+/* 9.3 수익과 손실 색. 글자색만 바꾼다(9.1) */
+
+.value-up {
+  color: var(--color-profit);
+}
+
+.value-down {
+  color: var(--color-loss);
+}
+
+/* 10.9 현재가 미입력. 현재가 칸의 입력칸 아래에 표시한다 */
+
+.price-missing {
+  display: block;
+  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+}
+
 /* 10.3 빈 상태 문구 */
 
 #transactions-empty,

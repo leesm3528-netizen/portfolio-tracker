@@ -4,12 +4,18 @@
 import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, showMessage } from "./ui.js";
 import { createEmptyData, loadData, saveData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
-import { prunePrices, sortTransactions } from "./portfolio.js";
+import { buildHoldings, calcPositions, prunePrices, sortTransactions } from "./portfolio.js";
 
 let state;
 
+// 검증된 상태에서 calcPositions 가 실패하면 불변 조건 위반이므로 예외를 던진다(02 4.2).
 function buildView(data) {
-  return { transactions: sortTransactions(data.transactions) };
+  const positions = calcPositions(data.transactions);
+  if (!positions.ok) throw new Error(`calcPositions failed: ${positions.error.code}`);
+  return {
+    transactions: sortTransactions(data.transactions),
+    holdings: buildHoldings(positions.value, data.prices),
+  };
 }
 
 function render() {

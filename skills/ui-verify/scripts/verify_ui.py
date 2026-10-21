@@ -490,6 +490,118 @@ SCENARIOS["T4-08"] = [
 ]
 
 
+# T4-09 보유 현황 표 (docs/05_작업지시서.md T4-09 검증 방법)
+# 기대값은 03 14절 사례의 표시값(03 13.2 자릿수, 04 8절 형식)이다.
+# 칸 순서: 종목명, 자산군, 보유수량, 평균단가, 현재가, 평가금액, 평가손익, 수익률, 실현손익(02 9.3)
+
+
+def case_subset(case_id, indexes):
+    """사례 데이터에서 indexes 위치의 거래만 남긴 저장 객체."""
+    data = fixtures.case_data(case_id)
+    data["transactions"] = [data["transactions"][i] for i in indexes]
+    return data
+
+
+def holding_cells(run, name):
+    """보유 현황에서 종목명이 name 인 행의 칸별 (텍스트, 색 클래스) 목록."""
+    rows = run.page.evaluate(
+        """() => [...document.getElementById('holdings-body').rows].map(tr => [...tr.cells].map(c => [
+            c.innerText.trim(), ['value-up', 'value-down'].filter(k => c.classList.contains(k)).join(' ')]))"""
+    )
+    for row in rows:
+        if row[0][0] == name:
+            return row
+    raise AssertionError(f"보유 현황에 {name} 행이 없다")
+
+
+def expect_holding(run, name, texts, colors=None):
+    """행 텍스트와 색 클래스(칸 번호 -> 클래스, 나머지 칸은 클래스 없음)를 확인한다."""
+    cells = holding_cells(run, name)
+    actual = [text for text, _ in cells]
+    if actual != texts:
+        raise AssertionError(f"{name} 행: 기대 {texts}, 실제 {actual}")
+    colors = colors or {}
+    actual_colors = {i: cls for i, (_, cls) in enumerate(cells) if cls}
+    if actual_colors != colors:
+        raise AssertionError(f"{name} 행 색 클래스: 기대 {colors}, 실제 {actual_colors}")
+
+
+def t4_09_c02(run):
+    run.open_with_data(fixtures.case_data("C-02"))
+    expect_holding(run, "종목B", ["종목B", "주식", "30", "5,450.00", "6,000", "180,000", "+16,500", "+10.09", "0"],
+                   {6: "value-up", 7: "value-up"})
+    expect_hidden(run, "#holdings-empty", True)
+    first = run.page.locator("#holdings-body tr").first.locator("th")
+    if first.get_attribute("scope") != "row":
+        raise AssertionError("종목명 칸이 th scope=row 가 아니다")
+
+
+def t4_09_c11(run):
+    run.open_with_data(fixtures.case_data("C-11"))
+    expect_holding(run, "종목K", ["종목K", "주식", "2", "10,166.67", "11,000", "22,000", "+1,667", "+8.20", "+1,833"],
+                   {6: "value-up", 7: "value-up", 8: "value-up"})
+
+
+def t4_09_zero_quantity(run):
+    run.open_with_data(case_subset("C-04", [0, 1]))
+    expect_holding(run, "종목D", ["종목D", "주식", "0", "0.00", "-", "-", "-", "-", "+6,000"], {8: "value-up"})
+
+
+def t4_09_price_missing_and_cash(run):
+    run.open_with_data(fixtures.case_data("C-10"))
+    expect_holding(run, "종목J", ["종목J", "주식", "10", "2,550.00", "현재가 미입력", "25,500", "0", "0.00", "0"])
+    if run.page.locator("#holdings-body .price-missing").count() != 1:
+        raise AssertionError("C-10: price-missing 표시가 1 개가 아니다")
+
+
+def t4_09_cash(run):
+    run.open_with_data(fixtures.case_data("C-14"))
+    expect_holding(run, "현금", ["현금", "현금", "700,000", "1.00", "1", "700,000", "0", "0.00", "0"])
+    if run.page.locator("#holdings-body .price-missing").count() != 0:
+        raise AssertionError("C-14: 현금에 현재가 미입력 표시가 있다")
+
+
+def t4_09_cash_fee(run):
+    run.open_with_data(fixtures.case_data("C-15"))
+    expect_holding(run, "현금", ["현금", "현금", "1,000,000", "1.00", "1", "1,000,000", "-1,000", "-0.10", "0"],
+                   {6: "value-down", 7: "value-down"})
+
+
+def t4_09_realized_loss(run):
+    run.open_with_data(case_subset("C-03", [0, 2]))
+    cells = holding_cells(run, "종목C")
+    if cells[8] != ["-2,300", "value-down"]:
+        raise AssertionError(f"실현손익 칸: 기대 ['-2,300', 'value-down'], 실제 {cells[8]}")
+
+
+def t4_09_order(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    names = [row[0] for row in row_texts(run, "holdings-body")]
+    if names != ["종목N", "종목O", "현금", "종목P"]:
+        raise AssertionError(f"행 순서: {names}")
+    expect_holding(run, "종목N", ["종목N", "주식", "10", "50,500.00", "55,000", "550,000", "+45,000", "+8.91", "0"],
+                   {6: "value-up", 7: "value-up"})
+
+
+def t4_09_empty(run):
+    run.open()
+    expect_hidden(run, "#holdings-empty", False)
+    expect_hidden(run, "#holdings-table", True)
+
+
+SCENARIOS["T4-09"] = [
+    ("C-02 수수료 포함 매수와 수익 색", t4_09_c02),
+    ("C-11 평균단가 반올림 표시", t4_09_c11),
+    ("C-04 보유수량 0 행은 평가 칸 -", t4_09_zero_quantity),
+    ("C-10 현재가 미입력 표시", t4_09_price_missing_and_cash),
+    ("C-14 현금 현재가 1", t4_09_cash),
+    ("C-15 현금 수수료 손실 색", t4_09_cash_fee),
+    ("C-03 실현손익 음수 손실 색", t4_09_realized_loss),
+    ("R-06 행 순서와 종목N 표시값", t4_09_order),
+    ("종목 0개 빈 상태 문구", t4_09_empty),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------

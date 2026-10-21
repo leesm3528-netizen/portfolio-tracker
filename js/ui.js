@@ -1,7 +1,7 @@
 // 모든 DOM 접근: 이벤트 등록, 폼 값 읽기, 표 렌더링, 메시지 문장, 숫자 표시 형식. 함수 형식은 docs/02_설계문서.md 7.5 다.
 // 계산 공식과 입력 검증 규칙을 두지 않는다. portfolio.js 에서 상수만 import 한다(02 2절).
 
-import { ASSET_CLASS_LABELS, TRANSACTION_TYPE_LABELS } from "./portfolio.js";
+import { ASSET_CLASS_LABELS, CASH_NAME, TRANSACTION_TYPE_LABELS } from "./portfolio.js";
 
 // 01 5.2~5.4 의 메시지 문구(머리말 제외). 글자를 바꾸지 않는다(02 4.3).
 const MESSAGES = {
@@ -74,8 +74,15 @@ function numberFormat(options, signed = false) {
   };
 }
 
+const formatWon = numberFormat({ maximumFractionDigits: 0 });
+const formatSignedWon = numberFormat({ maximumFractionDigits: 0 }, true);
+const formatAvgCost = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatPrice = numberFormat({ minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const formatQuantity = numberFormat({ maximumFractionDigits: 0 });
+const formatSignedPercent = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 }, true);
+
+// 현재가 미입력 표시(01 FR-05 기준 3, 02 9.3)
+const PRICE_MISSING = "현재가 미입력";
 
 // 치환 자리 -> params 값의 표시(02 11절)
 const SLOTS = {
@@ -110,6 +117,12 @@ function cell(tag, text, className = "") {
   el.textContent = text;
   if (className) el.className = className;
   return el;
+}
+
+// 부호 있는 표시값 칸. 색 클래스는 표시값의 부호로 정한다(02 9.9, 표시값 0 은 부호와 클래스 없음).
+function signedCell(text) {
+  const color = text.startsWith("+") ? " value-up" : text.startsWith("-") ? " value-down" : "";
+  return cell("td", text, "num" + color);
 }
 
 function rowHeader(text) {
@@ -190,8 +203,37 @@ function renderTransactions(transactions) {
   byId("transactions-empty").hidden = transactions.length > 0;
 }
 
+// 현재가 칸: 현금은 1, 그 밖에는 저장된 현재가. 미입력이면 "현재가 미입력" 을 표시한다(02 9.3).
+function priceCell(row) {
+  if (row.name === CASH_NAME || !row.priceMissing) return cell("td", formatPrice(row.price), "num");
+  const td = cell("td", "", "num");
+  td.append(cell("span", PRICE_MISSING, "price-missing"));
+  return td;
+}
+
+// 보유수량 0 행은 현재가, 평가금액, 평가손익, 수익률 칸을 "-" 로 둔다(02 6.2).
+function renderHoldings(holdings) {
+  const rows = holdings.map((row) => {
+    const tr = document.createElement("tr");
+    tr.append(rowHeader(row.name), cell("td", ASSET_CLASS_LABELS[row.assetClass]),
+      cell("td", formatQuantity(row.quantity), "num"), cell("td", formatAvgCost(row.avgCost), "num"));
+    if (row.quantity === 0) {
+      tr.append(...["-", "-", "-", "-"].map((text) => cell("td", text, "num")));
+    } else {
+      tr.append(priceCell(row), cell("td", formatWon(row.marketValue), "num"),
+        signedCell(formatSignedWon(row.unrealizedPnl)), signedCell(formatSignedPercent(row.returnRate)));
+    }
+    tr.append(signedCell(formatSignedWon(row.realizedPnl)));
+    return tr;
+  });
+  byId("holdings-body").replaceChildren(...rows);
+  byId("holdings-table").hidden = holdings.length === 0;
+  byId("holdings-empty").hidden = holdings.length > 0;
+}
+
 export function renderApp(view) {
   renderTransactions(view.transactions);
+  renderHoldings(view.holdings);
 }
 
 // 날짜, 자산군, 구분은 유지하고 나머지를 비운 뒤 날짜 입력칸으로 포커스를 옮긴다(02 7.5).

@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-01~T4-08 을 마쳤고 다음은 T4-09 이다. verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
+4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-01~T4-09 를 마쳤고 다음은 T4-10 이다. verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
 
 ## 완료한 작업
 
+- T4-09 보유 현황 표: js/main.js `buildView` 에 `calcPositions`(실패면 throw) -> `buildHoldings` 를, js/ui.js 에 보유 현황 렌더(종목명 th scope=row, 보유수량 0 행의 평가 칸 "-", 현금 현재가 1, "현재가 미입력" `price-missing`, 표시값 부호로 `value-up`/`value-down`)와 내부 `formatWon`, `formatSignedWon`, `formatAvgCost`, `formatSignedPercent` 를, css/style.css 에 `value-up`, `value-down`, `price-missing` 을 추가했다. verify_ui.py 에 T4-09 시나리오 9개(C-02, C-11, C-04 #0~#1, C-10, C-14, C-15, C-03 #0/#2, R-06 순서, 빈 상태)를 추가했고 전체 통과 30 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4, T4-09 9). 표시값은 03 14절 표시값과 같다.
 - T4-08 거래 삭제: js/ui.js 에 삭제 버튼(02 9.2 형식, aria-label "{날짜} {종목명} {구분} 거래 삭제"), `#transactions-body` click 위임과 삭제 뒤 포커스(같은 순번 행의 삭제 버튼, 없으면 `#transactions-heading`), `confirmAction` 을, js/main.js 에 `handlers.onDeleteTransaction`(C-01 확인 -> `deleteTransaction` -> 실패 VE-11/VE-24 는 `transactions` 영역 -> `prunePrices` -> `commit`)을, css/style.css 에 표 안 버튼과 호버를 추가했다. verify_ui.py 에 T4-08 시나리오 4개를 추가하고 T4-07 거래 행 기대값의 삭제 열을 "삭제" 로 고쳤다. 전체 통과 21 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4).
 - T4-07 시작 흐름, 거래 입력, 거래 내역 표: js/main.js(`state`, `init`, `commit`, `buildView` 는 transactions 만, `render`, `handlers.onAddTransaction`)와 js/ui.js(`bindEvents`, `renderApp`, `resetTransactionForm`, `showMessage`, `clearMessage`, 내부 `MESSAGES` 35개, 치환 자리 표 `SLOTS`, `formatPrice`, `formatQuantity`)를 만들고, portfolio.js 에 `TRANSACTION_TYPE_LABELS`, index.html 에 main.js script 와 `#allocation-message` 의 `message-info` 클래스(04 10.9), css/style.css 에 `message-error`, `message-info`, tbody 행 호버를 추가했다. verify_ui.py 에 T4-07 시나리오 8개를 추가했고 전체 통과 17 / 실패 0(T3-01 5, T3-02 4, T4-07 8). `MESSAGES` 를 01 5.2~5.4 표와 기계 대조해 35개 일치. 숫자 입력칸의 badInput 이 빈칸으로 처리되는 문제를 M-32 로 추가하고 권장안("NaN" 을 넘김)으로 해소해 02 5.2, 7.3, 7.5 에 반영했다. 저장 성공 시 `#data-message` 를 지운다(04 10.8).
 - T4-06 storage.js 저장 객체 검증과 읽기/쓰기: js/storage.js(`createEmptyData`, `parseData`, `loadData`, `saveData`. 내부 `STORAGE_KEY`, `DATA_VERSION`, `validateData`)를 만들고 js/rebalance.js 에 `createDefaultTargets`, `validateTargets`(범위와 자릿수 판정은 내부 함수 `targetValueError` 하나), js/portfolio.js 에 `prunePrices` 를 추가했다. `verify.mjs` 옵션 없이 통과 442 / 실패 0 / 건너뜀 0, 종료 코드 0. 임시 폴더 Node 확인에서 02 5.5 예시 통과와 `parseData` 확인 목록 1~9(VE-17, VD-01, VE-19 와 version 우선, VD-03 index 1 과 cause VE-04, VD-04, VE-25, VD-06, 합계 50 성공, prices 정리, VD-05)가 모두 기대대로. 05 에 정의된 화면 검증은 T4-07 이며, 확인용으로 localStorage 모의 객체를 써서 `loadData`(키 없음, 저장값, 손상 VE-21, 접근 예외 VE-21)와 `saveData`(성공, 예외 VE-20)도 확인했다. storage.js import 는 02 3절 표와 같고 DOM 접근 0 건.
@@ -32,7 +33,7 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T4-09 보유 현황 표
+1. T4-10 현재가 입력
 
 ## 알려진 문제
 
