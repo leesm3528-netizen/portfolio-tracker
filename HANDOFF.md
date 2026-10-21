@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-2단계(프로젝트 전용 스킬) 진행 중. T2-01~T2-03 을 마쳤다. 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 2단계 마지막 작업은 T2-05 다(docs/05_작업지시서.md 1.6). HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
+2단계(프로젝트 전용 스킬) 진행 중. T2-01~T2-04 를 마쳤다. 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 2단계 마지막 작업은 T2-05 다(docs/05_작업지시서.md 1.6). HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
 
 ## 완료한 작업
 
+- T2-04 verify.mjs 작성: skills/calc-rule-verify/scripts/verify.mjs. C-01~C-15, R-01~R-06 을 검사 442 개로 옮겼다. node --check 통과, js/ 없는 상태에서 옵션 없이 442 건 SKIP 종료 코드 1, --allow-missing 종료 코드 0, C-01 과 R 지정 동작 확인, 알 수 없는 인자(X-1, --foo, C-99) 종료 코드 1. 저장소 밖 임시 폴더에 03 공식대로 만든 모의 모듈과 스크립트 복사본으로 시험해 442 건 PASS, 일부러 틀린 구현 10 가지는 해당 사례에서 FAIL 또는 SKIP 으로 판정됨을 확인했다(모의 모듈은 커밋하지 않음). 거래 행 전사를 03 원문과 기계 대조해 일치.
 - T2-03 calc-rule-verify 스킬 문서 작성: skills/calc-rule-verify/SKILL.md. 실행 명령과 옵션은 05 2.2 와 같다. 03 에 없는 사례 ID 도 알 수 없는 인자로 보고 종료 코드 1 로 정했다. 이모지 검사 0 건.
 - T2-02 handoff-update 스킬 작성: skills/handoff-update/SKILL.md. 이 스킬 절차로 이 HANDOFF.md 를 갱신했다. 이모지 검사 0 건, "## " 제목 5개의 이름과 순서가 AGENTS.md 9절과 같다.
 - T2-01 doc-writing-rules 스킬 작성: skills/doc-writing-rules/SKILL.md. 이 스킬로 기존 문서 9개를 점검해 05 E-05 의 "평가액" 을 "평가금액" 으로, CLAUDE.md 2절의 playwright 설치 상태를 실제와 맞게 고쳤다. 이모지 검사 10개 파일 0 건, docs 목차와 본문 제목 일치.
@@ -19,8 +20,7 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T2-04 verify.mjs 작성
-2. T2-05 ui-verify 스킬 작성
+1. T2-05 ui-verify 스킬 작성
 
 ## 알려진 문제
 
