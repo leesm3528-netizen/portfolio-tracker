@@ -94,3 +94,9 @@ export function buildAllocation(classValues) {
   }));
   return { totalValue, rows };
 }
+
+// 거래가 없는 종목과 현금 키를 뺀 현재가 객체(02 5.3)
+export function prunePrices(prices, transactions) {
+  const names = new Set(transactions.map((tx) => tx.name));
+  return Object.fromEntries(Object.entries(prices).filter(([name]) => name !== CASH_NAME && names.has(name)));
+}
