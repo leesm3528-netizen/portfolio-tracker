@@ -4,6 +4,7 @@
 export const ASSET_CLASSES = ["stock", "bond", "cash", "other"];
 export const ASSET_CLASS_LABELS = { stock: "주식", bond: "채권", cash: "현금", other: "기타" };
 export const TRANSACTION_TYPES = ["buy", "sell"];
+export const TRANSACTION_TYPE_LABELS = { buy: "매수", sell: "매도" };
 export const CASH_NAME = "현금";
 export const CASH_PRICE = 1;
 

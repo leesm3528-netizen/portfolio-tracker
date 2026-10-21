@@ -312,6 +312,10 @@ td.num {
   text-align: right;
 }
 
+tbody tr:hover {
+  background: var(--color-surface-subtle);
+}
+
 tfoot th,
 tfoot td {
   border-top: var(--border-width-strong) solid var(--color-border);
@@ -325,6 +329,30 @@ tfoot td {
   padding: var(--space-6) 0;
   color: var(--color-text-muted);
   text-align: center;
+}
+
+/* 10.8, 10.9 메시지 줄의 오류 상자와 경고 상자. 내용이 없으면 클래스가 없어 자리를 차지하지 않는다 */
+
+.message-error,
+.message-info {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border-left: var(--border-width-strong) solid;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.message-error {
+  background: var(--color-error-bg);
+  border-left-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.message-info {
+  background: var(--color-warning-bg);
+  border-left-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 /* 10.10 고지 문구 */

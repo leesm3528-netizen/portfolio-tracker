@@ -9,6 +9,7 @@ Python 3 표준 라이브러리와 playwright.sync_api 만 쓴다. playwright �
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -200,6 +201,212 @@ SCENARIOS["T3-02"] = [
     ("1024px 이상 자산 비중과 리밸런싱 두 열", t3_02_two_columns),
     (".num 숫자 글꼴 tabular-nums", t3_02_numeric_font),
     ("Tab 이동 시 포커스 링", t3_02_focus_ring),
+]
+
+
+# T4-07 시작 흐름, 거래 입력, 거래 내역 표 (docs/05_작업지시서.md T4-07 검증 방법)
+# 기대 문구는 01 5절 원문에 머리말(04 13.1)을 붙인 것이다.
+
+ERROR = "오류: "
+UUID_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+VE_01 = "날짜를 YYYY-MM-DD 형식의 실제 날짜로 입력하세요."
+VE_02 = "종목명을 입력하세요."
+VE_03 = "자산군을 선택하세요."
+VE_04 = "수량은 1 이상의 정수로 입력하세요."
+VE_05 = "가격은 0보다 큰 숫자로 입력하세요."
+VE_06 = "수수료는 0 이상의 숫자로 입력하세요."
+VE_08 = "현금 거래는 자산군을 현금으로, 가격을 1로 입력하세요."
+VE_20 = "브라우저 저장소에 저장하지 못했습니다. 새로고침하면 마지막 변경이 사라질 수 있으니 JSON 내보내기로 백업하세요."
+VE_21 = "저장된 데이터를 읽을 수 없어 빈 상태로 시작합니다. 백업한 JSON 파일이 있으면 불러오기로 복구하세요."
+C01_FIRST = {"date": "2026-01-02", "name": "종목A", "asset_class": "stock", "type": "buy",
+             "quantity": "10", "price": "10000", "fee": "0"}  # 03 14.2 C-01 의 #0
+
+
+def fill_transaction(run, date, name, asset_class, type, quantity, price, fee=""):
+    """거래 입력 폼을 채운다. 값은 폼에 넣는 문자열 그대로다."""
+    page = run.page
+    page.fill("#tx-date", date)
+    page.fill("#tx-name", name)
+    page.select_option("#tx-asset-class", asset_class)
+    page.select_option("#tx-type", type)
+    page.fill("#tx-quantity", quantity)
+    page.fill("#tx-price", price)
+    page.fill("#tx-fee", fee)
+
+
+def add_transaction(run, **fields):
+    fill_transaction(run, **fields)
+    run.page.click("#tx-submit")
+
+
+def row_count(run, tbody):
+    return run.page.locator(f"#{tbody} tr").count()
+
+
+def expect_rows(run, tbody, expected):
+    actual = row_count(run, tbody)
+    if actual != expected:
+        raise AssertionError(f"#{tbody} 행 수: 기대 {expected}, 실제 {actual}")
+
+
+def row_texts(run, tbody):
+    """tbody 각 행의 칸 텍스트 목록(앞뒤 공백 제거)."""
+    return run.page.evaluate(
+        """(id) => [...document.getElementById(id).rows]
+            .map(tr => [...tr.cells].map(c => c.innerText.trim()))""",
+        tbody,
+    )
+
+
+def stored_data(run):
+    """localStorage 의 저장 객체를 dict 로 읽는다. 키가 없으면 None."""
+    text = run.page.evaluate(f"localStorage.getItem({json.dumps(fixtures.STORAGE_KEY)})")
+    return None if text is None else json.loads(text)
+
+
+def expect_hidden(run, selector, hidden):
+    actual = run.page.locator(selector).is_hidden()
+    if actual != hidden:
+        raise AssertionError(f"{selector} hidden: 기대 {hidden}, 실제 {actual}")
+
+
+def t4_07_empty(run):
+    run.open()
+    expect_hidden(run, "#transactions-empty", False)
+    expect_hidden(run, "#transactions-table", True)
+    today = run.page.evaluate(
+        "(() => { const d = new Date(); const p = n => String(n).padStart(2, '0');"
+        " return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })()"
+    )
+    actual = run.page.input_value("#tx-date")
+    if actual != today:
+        raise AssertionError(f"#tx-date 값: 기대 {today}, 실제 {actual!r}")
+
+
+def t4_07_add(run):
+    run.open()
+    add_transaction(run, **C01_FIRST)
+    expect_rows(run, "transactions-body", 1)
+    expected = ["2026-01-02", "종목A", "주식", "매수", "10", "10,000", "0", ""]
+    actual = row_texts(run, "transactions-body")[0]
+    if actual != expected:
+        raise AssertionError(f"거래 행: 기대 {expected}, 실제 {actual}")
+    expect_hidden(run, "#transactions-empty", True)
+    data = stored_data(run)
+    if data is None or list(data) != ["version", "transactions", "prices", "targets"]:
+        raise AssertionError(f"저장 객체 키: {None if data is None else list(data)}")
+    tx = data["transactions"][0]
+    if not re.match(UUID_PATTERN, tx["id"]):
+        raise AssertionError(f"id 가 UUID 형식이 아님: {tx['id']!r}")
+    expected_tx = {"date": "2026-01-02", "name": "종목A", "assetClass": "stock", "type": "buy",
+                   "quantity": 10, "price": 10000, "fee": 0}
+    if {k: v for k, v in tx.items() if k != "id"} != expected_tx or list(tx)[0] != "id":
+        raise AssertionError(f"저장된 거래: {tx}")
+    if data["version"] != 1 or data["prices"] != {} or data["targets"] != {"stock": 0, "bond": 0, "cash": 0, "other": 0}:
+        raise AssertionError(f"저장 객체: {data}")
+    # 추가 성공 후 폼 상태(02 7.5 resetTransactionForm)
+    values = {i: run.page.input_value("#" + i) for i in
+              ("tx-date", "tx-name", "tx-asset-class", "tx-type", "tx-quantity", "tx-price", "tx-fee")}
+    expected_values = {"tx-date": "2026-01-02", "tx-name": "", "tx-asset-class": "stock", "tx-type": "buy",
+                       "tx-quantity": "", "tx-price": "", "tx-fee": ""}
+    if values != expected_values:
+        raise AssertionError(f"추가 후 폼 값: {values}")
+    focused = run.page.evaluate("document.activeElement.id")
+    if focused != "tx-date":
+        raise AssertionError(f"추가 후 포커스: 기대 tx-date, 실제 {focused!r}")
+
+
+def t4_07_reload(run):
+    run.open()
+    add_transaction(run, **C01_FIRST)
+    before = row_texts(run, "transactions-body")
+    run.page.reload()
+    after = row_texts(run, "transactions-body")
+    if after != before:
+        raise AssertionError(f"새로고침 후 행: 기대 {before}, 실제 {after}")
+
+
+def t4_07_field_errors(run):
+    run.open()
+    cases = [
+        ("종목명 공백", {"name": "   "}, VE_02),
+        ("자산군 미선택", {"asset_class": ""}, VE_03),
+        ("수량 1.5", {"quantity": "1.5"}, VE_04),
+        ("가격 0", {"price": "0"}, VE_05),
+        ("수수료 -1", {"fee": "-1"}, VE_06),
+        ("날짜 비움", {"date": ""}, VE_01),
+        ("현금과 자산군 주식", {"name": "현금", "price": "1"}, VE_08),
+    ]
+    for label, change, message in cases:
+        fields = {**C01_FIRST, **change}
+        add_transaction(run, **fields)
+        run.expect_text("#tx-message", ERROR + message)
+        expect_rows(run, "transactions-body", 0)
+        # 입력값을 지우지 않는다(01 FR-01 기준 7)
+        if run.page.input_value("#tx-name") != fields["name"] or run.page.input_value("#tx-date") != fields["date"]:
+            raise AssertionError(f"{label}: 오류 후 입력값이 바뀌었다")
+        if stored_data(run) is not None:
+            raise AssertionError(f"{label}: 오류인데 저장되었다")
+    # 숫자로 해석되지 않는 수수료(브라우저 badInput)는 0 이 아니라 오류다(05 3.1 M-32)
+    fill_transaction(run, **C01_FIRST)
+    run.page.fill("#tx-fee", "")
+    run.page.focus("#tx-fee")
+    run.page.keyboard.type("1e")
+    run.page.click("#tx-submit")
+    run.expect_text("#tx-message", ERROR + VE_06)
+    expect_rows(run, "transactions-body", 0)
+    # 다음 성공 때 오류가 사라진다
+    add_transaction(run, **C01_FIRST)
+    expect_rows(run, "transactions-body", 1)
+    run.expect_text("#tx-message", "")
+
+
+def t4_07_sell_and_class_errors(run):
+    run.open()
+    add_transaction(run, **C01_FIRST)
+    add_transaction(run, **{**C01_FIRST, "date": "2026-01-03", "type": "sell", "quantity": "11"})
+    run.expect_text("#tx-message", ERROR + "2026-01-03 기준 '종목A'의 보유수량은 10입니다. 그보다 많이 매도할 수 없습니다.")
+    expect_rows(run, "transactions-body", 1)
+    add_transaction(run, **{**C01_FIRST, "asset_class": "bond"})
+    run.expect_text("#tx-message", ERROR + "'종목A'의 자산군은 주식입니다. 같은 종목은 하나의 자산군만 가질 수 있습니다.")
+    expect_rows(run, "transactions-body", 1)
+
+
+def t4_07_html_name(run):
+    run.open()
+    add_transaction(run, **{**C01_FIRST, "name": "<b>x</b>"})
+    name_cell = run.page.locator("#transactions-body tr td").first
+    if name_cell.inner_text() != "<b>x</b>":
+        raise AssertionError(f"종목명 칸: {name_cell.inner_text()!r}")
+    if run.page.locator("#transactions-body b").count() != 0:
+        raise AssertionError("종목명이 HTML 로 해석되어 b 요소가 생겼다")
+
+
+def t4_07_corrupt_storage(run):
+    run.context.add_init_script(f"localStorage.setItem({json.dumps(fixtures.STORAGE_KEY)}, '{{')")
+    run.open()
+    run.expect_text("#data-message", ERROR + VE_21)
+    expect_hidden(run, "#transactions-empty", False)
+    expect_rows(run, "transactions-body", 0)
+
+
+def t4_07_save_failure(run):
+    run.context.add_init_script("Storage.prototype.setItem = function () { throw new Error('blocked'); };")
+    run.open()
+    add_transaction(run, **C01_FIRST)
+    run.expect_text("#data-message", ERROR + VE_20)
+    expect_rows(run, "transactions-body", 1)
+
+
+SCENARIOS["T4-07"] = [
+    ("빈 상태 문구와 날짜 초기값 오늘", t4_07_empty),
+    ("C-01 #0 추가, 저장 객체와 UUID, 추가 후 폼", t4_07_add),
+    ("새로고침 후 행 유지", t4_07_reload),
+    ("항목 오류 VE-01~VE-08 과 입력값 유지", t4_07_field_errors),
+    ("초과 매도 VE-09 와 자산군 불일치 VE-07", t4_07_sell_and_class_errors),
+    ("종목명 HTML 문자열은 글자 그대로", t4_07_html_name),
+    ("저장 데이터 손상 VE-21", t4_07_corrupt_storage),
+    ("저장 실패 VE-20", t4_07_save_failure),
 ]
 
 

@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. 계산과 저장 모듈(T4-01~T4-06)을 마쳤고 다음은 T4-07 이다. T4-05 부터 verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
+4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. 계산과 저장 모듈(T4-01~T4-06)과 T4-07 을 마쳤고 다음은 T4-08 이다. verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
 
 ## 완료한 작업
 
+- T4-07 시작 흐름, 거래 입력, 거래 내역 표: js/main.js(`state`, `init`, `commit`, `buildView` 는 transactions 만, `render`, `handlers.onAddTransaction`)와 js/ui.js(`bindEvents`, `renderApp`, `resetTransactionForm`, `showMessage`, `clearMessage`, 내부 `MESSAGES` 35개, 치환 자리 표 `SLOTS`, `formatPrice`, `formatQuantity`)를 만들고, portfolio.js 에 `TRANSACTION_TYPE_LABELS`, index.html 에 main.js script 와 `#allocation-message` 의 `message-info` 클래스(04 10.9), css/style.css 에 `message-error`, `message-info`, tbody 행 호버를 추가했다. verify_ui.py 에 T4-07 시나리오 8개를 추가했고 전체 통과 17 / 실패 0(T3-01 5, T3-02 4, T4-07 8). `MESSAGES` 를 01 5.2~5.4 표와 기계 대조해 35개 일치. 숫자 입력칸의 badInput 이 빈칸으로 처리되는 문제를 M-32 로 추가하고 권장안("NaN" 을 넘김)으로 해소해 02 5.2, 7.3, 7.5 에 반영했다. 저장 성공 시 `#data-message` 를 지운다(04 10.8).
 - T4-06 storage.js 저장 객체 검증과 읽기/쓰기: js/storage.js(`createEmptyData`, `parseData`, `loadData`, `saveData`. 내부 `STORAGE_KEY`, `DATA_VERSION`, `validateData`)를 만들고 js/rebalance.js 에 `createDefaultTargets`, `validateTargets`(범위와 자릿수 판정은 내부 함수 `targetValueError` 하나), js/portfolio.js 에 `prunePrices` 를 추가했다. `verify.mjs` 옵션 없이 통과 442 / 실패 0 / 건너뜀 0, 종료 코드 0. 임시 폴더 Node 확인에서 02 5.5 예시 통과와 `parseData` 확인 목록 1~9(VE-17, VD-01, VE-19 와 version 우선, VD-03 index 1 과 cause VE-04, VD-04, VE-25, VD-06, 합계 50 성공, prices 정리, VD-05)가 모두 기대대로. 05 에 정의된 화면 검증은 T4-07 이며, 확인용으로 localStorage 모의 객체를 써서 `loadData`(키 없음, 저장값, 손상 VE-21, 접근 예외 VE-21)와 `saveData`(성공, 예외 VE-20)도 확인했다. storage.js import 는 02 3절 표와 같고 DOM 접근 0 건.
 - T4-05 transactions.js 거래 생성과 목록 검증: js/transactions.js(`createTransaction`, `validateTransactionFields`, `validateTransactionList`, `addTransaction`, `deleteTransaction`)를 만들고 js/portfolio.js 에 `parseNumber`, `TRANSACTION_TYPES`, `ASSET_CLASS_LABELS` 를 추가했다. `verify.mjs` 옵션 없이 통과 442 / 실패 0 / 건너뜀 0, 종료 코드 0. 임시 폴더 Node 확인 목록 1~9(VE-01 2026-02-30, 미래 날짜 허용, VE-02, VE-03, VE-22, VE-04, VE-05, 빈 수수료 0, VE-06, VE-08, 현금 수수료 1000 허용, VE-23 key, VE-26, error 가 { code, params })와 원래 배열 유지 모두 기대대로. 2.5 DOM 접근 검사 0 건, import 는 02 3절 표와 같다. VE-23 의 key 선택과 객체가 아닌 거래 항목 처리를 M-31 로 추가하고 권장안으로 해소했다(02 7.2 에 반영).
 - T4-04 rebalance.js 리밸런싱 계산: js/rebalance.js 를 만들었다(내부 상수 `TARGET_TOTAL`, `sumTargets`, `calcRebalance`. portfolio.js 에서 `ASSET_CLASSES`, `calcTotalValue` 만 import). `verify.mjs R --allow-missing` 통과 167 / 실패 0 / 건너뜀 0, R-03 부동소수 합계 판정과 R-04 유지/매도 1 판정 PASS. 전체 `--allow-missing` 통과 395 / 실패 0 / 건너뜀 47(transactions.js 검사). 2.5 DOM 접근 검사 0 건, import 는 02 3절 표와 같다.
@@ -30,7 +31,7 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T4-07 시작 흐름, 거래 입력, 거래 내역 표
+1. T4-08 거래 삭제
 
 ## 알려진 문제
 
@@ -41,10 +42,10 @@
 ## 다음 작업자에게 주의사항
 
 1. 이전 작업의 대화 기록은 볼 수 없다. 이 파일, AGENTS.md, docs/, skills/ 만이 근거다. 사용자와 새로 정한 내용은 반드시 원본 문서에 적는다.
-2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-32 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-31 은 권장안대로 해소되었다.
+2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-33 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-32 는 권장안대로 해소되었다.
 3. 화면 메시지 문구의 원본은 docs/01_요구사항.md 5절 하나다. 계산과 검증 모듈은 문장을 만들지 않고 `{ code, params }` 만 반환한다(docs/02_설계문서.md 4.1, 11절).
-4. 3단계 화면은 JS 없이 데이터 0 건 상태의 정적 뼈대다(05 3.1 M-29). 4단계에서 main.js 의 script 는 T4-07 에서 추가한다. tbody 행 호버는 T4-07, 표 안 버튼 스타일은 T4-08, JS 가 붙이는 클래스 스타일은 그 클래스를 처음 쓰는 작업에서 css/style.css 에 추가한다(M-30). 화면 작업은 verify_ui.py 에 작업 ID 로 시나리오를 추가하고 이전 시나리오(T3-01, T3-02)와 함께 실행한다.
+4. index.html 은 데이터 0 건 상태의 정적 뼈대이고(05 3.1 M-29) ui.js 가 렌더 때 hidden 을 바꾼다. 표 안 버튼 스타일은 T4-08, JS 가 붙이는 클래스 스타일은 그 클래스를 처음 쓰는 작업에서 css/style.css 에 추가한다(M-30). 화면 작업은 verify_ui.py 에 작업 ID 로 시나리오를 추가하고 이전 시나리오와 함께 실행한다. 메시지 문장은 ui.js 의 `MESSAGES` 와 치환 자리 표 `SLOTS` 로 만든다. VE-15 의 {합계} 자리는 `formatTargetSum` 을 만드는 T4-12 에서 `SLOTS` 에 추가한다. 숫자 입력칸 값은 ui.js 내부 `numberInputValue` 로 읽는다(M-32).
 5. 결정 항목은 "03 D-01" 처럼 문서 번호를 붙여 부른다. 문서마다 D 번호가 따로 매겨져 있다.
 6. 모든 문서에 이모지와 장식 기호를 쓰지 않는다. 화살표는 "->" 만 쓴다. 문체는 평서문 "~한다/~이다" 다. 화면 문구 인용만 "~합니다/~하세요" 다.
-7. 02 7절 공개 이름 중 아직 사용처가 없는 export 가 있다: `ASSET_CLASS_LABELS`, `sortTransactions`, `createEmptyData`, `loadData`, `saveData`(T4-07), `sumTargets`(T4-12), `parseData`(T4-15). 05 1.8 에 따라 허용되며 T4-17 시점에 사용처 없는 export 는 0 개여야 한다. `TRANSACTION_TYPE_LABELS` 는 T4-07, `updatePrice` 는 T4-10, `parseTargetInput` 은 T4-12(rebalance.js 내부 `targetValueError` 를 같이 쓴다), `serializeData` 는 T4-14 에서 만든다.
+7. 02 7절 공개 이름 중 아직 앱 모듈 사용처가 없는 export 가 있다: `sumTargets`(T4-12), `parseData`(T4-15. 지금은 storage.js 안의 `loadData` 만 쓴다). 05 1.8 에 따라 허용되며 T4-17 시점에 사용처 없는 export 는 0 개여야 한다. `updatePrice` 는 T4-10, `parseTargetInput` 은 T4-12(rebalance.js 내부 `targetValueError` 를 같이 쓴다), `serializeData` 는 T4-14 에서 만든다.
 8. 진행 상태는 `git log --oneline` 으로도 확인한다. 커밋 메시지는 작업 ID 로 시작한다.
