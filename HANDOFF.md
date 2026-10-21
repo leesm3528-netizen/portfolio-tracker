@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-01 을 마쳤고 다음은 T4-02 다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
+4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-02 를 마쳤고 다음은 T4-03 이다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
 
 ## 완료한 작업
 
+- T4-02 portfolio.js 보유 현황 행: js/portfolio.js 에 상수 `ASSET_CLASSES`, `CASH_NAME`, `CASH_PRICE` 와 `buildHoldings` 를 추가했다(03 7.1 현재가 순서, 보유수량 0 행 처리, 자산군 순서와 종목명 ko 정렬). `verify.mjs C --allow-missing` 통과 228 / 실패 0 / 건너뜀 47(건너뜀은 모두 transactions.js 검사), C-10, C-14 지정 실행 통과 20 / 실패 0 / 건너뜀 0. 2.5 DOM 접근 검사 0 건.
 - T4-01 portfolio.js 거래 정렬과 종목 상태 재계산: js/portfolio.js 에 `sortTransactions`, `calcPositions` 를 만들었다(실패 Result 에 `violation`). `verify.mjs C --allow-missing` 통과 152 / 실패 0 / 건너뜀 123(건너뜀은 아직 없는 buildHoldings, transactions.js 검사), C-06, C-07 단계 실패(violation.index 1), C-12 의 calcPositions 검사 모두 PASS. 임시 폴더 Node 확인에서 C-07 전체 거래 결과 VE-25, violation.index 1, 원래 배열 유지. 2.5 DOM 접근 검사와 import 검사 0 건. README 상태 문구를 4단계 진행 중으로 고쳤다.
 
 - T3-02 style.css 변수와 기본 스타일: css/style.css(04 의 변수 46개, 기본 요소, 폼, 버튼, 표, 빈 상태, 고지, 포커스 링, 640px/1024px 반응형), index.html 에 스타일시트 link 추가(M-28). verify_ui.py 에 T3-02 시나리오 4개(세 너비 가로 스크롤, 1024/1280px 두 열 top 일치, .num tabular-nums, Tab 이동 포커스 링 solid)를 추가했고 전체 통과 9 / 실패 0(T3-01 5, T3-02 4). px/hex grep 은 :root 와 미디어 쿼리 줄뿐, 금지 속성 grep 0 건, 정의 안 된 변수 사용 0 건. 360/768/1024/1280px 스크린샷을 눈으로 점검해 1024px 이상 자산군 선택칸 글자 잘림과 좁은 표 머리의 글자 단위 줄바꿈을 고쳤다. 아직 없는 요소의 스타일 범위를 M-30 으로 정하고 권장안으로 해소했다. README 상태 문구를 3단계 완료로 고쳤다.
@@ -25,13 +26,13 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T4-02 portfolio.js 보유 현황 행
+1. T4-03 portfolio.js 자산군 합계와 비중
 
 ## 알려진 문제
 
 1. 외부 스킬 doc-coauthoring, frontend-design, webapp-testing 이 설치되어 있지 않다. skill-creator 만 있다. 같은 원칙으로 진행한다(CLAUDE.md 2절). 화면 검증은 프로젝트 스킬 skills/ui-verify(T2-05)로 대신한다. 관련 작업: T3-01 이후 화면 작업.
 2. 화면 검증 환경: 작성자 PC 에는 Python 3.14(`py`), playwright 1.64.0, Chromium 이 설치되어 있다(2026-10-21 확인). 다른 PC 에서는 `py -m pip install playwright`, `py -m playwright install chromium` 을 먼저 실행한다. Git Bash 에서 verify_ui.py 출력을 파이프로 받으면 한글이 깨지므로 `PYTHONUTF8=1` 을 붙인다(skills/ui-verify/SKILL.md 4.1). 관련 작업: T3-01 이후 화면 작업.
-3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 재현: `node skills/calc-rule-verify/scripts/verify.mjs; echo $?`. 관련 작업: T4-02~T4-05.
+3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 재현: `node skills/calc-rule-verify/scripts/verify.mjs; echo $?`. 관련 작업: T4-03~T4-05.
 
 ## 다음 작업자에게 주의사항
 
