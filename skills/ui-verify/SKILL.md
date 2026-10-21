@@ -74,7 +74,7 @@ py skills/ui-verify/scripts/verify_ui.py --base-url https://{사용자 이름}.g
 | `run.dialogs`, `run.expect_dialog(expected)` | 대화상자 문구 기록과 확인(마지막 대화상자 기준) |
 | `run.check_widths()` | 360, 768, 1280px 에서 `document.documentElement.scrollWidth <= window.innerWidth` 를 확인한다 |
 | `run.screenshot(name)`, `run.save_download(download)` | 임시 폴더에 저장하고 경로를 반환한다 |
-| `fixtures.case_data(case_id)` | 03 14절 사례를 02 5.5 저장 객체로 반환한다. R-02 는 목표 비중 시도 a, b 를 `attempt` 인자로 고른다(기본 "a", 05 3.1 M-27 미해결) |
+| `fixtures.case_data(case_id)` | 03 14절 사례를 02 5.5 저장 객체로 반환한다. R-02 는 목표 비중 시도 a, b 를 `attempt` 인자로 고른다(기본 "a", 05 3.1 M-27) |
 
 시나리오는 실패하면 `AssertionError` 를 던진다. 다른 예외도 실패로 기록하고 다음 시나리오를 계속한다. 시나리오마다 새 브라우저 컨텍스트를 쓰므로 localStorage 는 비어 있는 상태에서 시작한다.
 
