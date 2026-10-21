@@ -195,6 +195,14 @@ export function bindEvents(handlers) {
     setTimeout(() => handlers.onPriceChange(name, raw));
   });
   byId("export-button").addEventListener("click", () => handlers.onExport());
+  // 보이는 불러오기 버튼이 숨겨진 파일 선택칸을 연다. 같은 파일을 다시 고를 수 있도록 값을 비운다(02 8절).
+  const fileInput = byId("import-file");
+  byId("import-button").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    const [file] = fileInput.files;
+    fileInput.value = "";
+    if (file) handlers.onImportFile(file);
+  });
   // 목표 비중은 입력할 때마다(input) 반영한다. 입력칸 값은 다시 쓰지 않는다(02 8절, 7.5).
   for (const assetClass of ASSET_CLASSES) {
     const input = targetInput(assetClass);

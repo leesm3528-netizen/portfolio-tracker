@@ -2,7 +2,7 @@
 // DOM 과 localStorage 에 직접 접근하지 않고, 화면 문장을 만들지 않는다.
 
 import { bindEvents, clearMessage, confirmAction, downloadJson, renderApp, resetTransactionForm, setTargetInputs, showMessage } from "./ui.js";
-import { createEmptyData, loadData, saveData, serializeData } from "./storage.js";
+import { createEmptyData, loadData, parseData, saveData, serializeData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
 import { buildAllocation, buildHoldings, calcPositions, prunePrices, sortTransactions, sumValueByAssetClass, updatePrice } from "./portfolio.js";
 import { calcRebalance, parseTargetInput, sumTargets } from "./rebalance.js";
@@ -28,13 +28,14 @@ function render() {
   renderApp(buildView(state));
 }
 
-// 저장에 실패해도 화면 상태는 새 상태로 유지한다(01 FR-10 기준 3).
+// 저장에 실패해도 화면 상태는 새 상태로 유지한다(01 FR-10 기준 3). 저장 성공 여부를 반환한다.
 function commit(nextData) {
   state = nextData;
   const saved = saveData(state);
   if (saved.ok) clearMessage("data");
   else showMessage("data", saved.error, "error");
   render();
+  return saved.ok;
 }
 
 const handlers = {
@@ -91,6 +92,21 @@ const handlers = {
 
   onExport() {
     downloadJson(serializeData(state));
+  },
+
+  // 검증에 실패하거나 확인 창에서 취소하면 아무것도 바꾸지 않는다. 확인하면 전체를 교체한다(02 5.7, 8절).
+  async onImportFile(file) {
+    const parsed = parseData(await file.text());
+    if (!parsed.ok) {
+      showMessage("data", parsed.error, "error");
+      return;
+    }
+    const params = { currentCount: state.transactions.length, fileCount: parsed.value.transactions.length };
+    if (!confirmAction({ code: "C-02", params })) return;
+    const saved = commit(parsed.value);
+    setTargetInputs(state.targets);
+    // 저장에 실패했으면 같은 메시지 줄의 VE-20 을 덮지 않는다.
+    if (saved) showMessage("data", { code: "IN-04", params: {} }, "info");
   },
 };
 

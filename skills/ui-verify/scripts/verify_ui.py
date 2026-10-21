@@ -1038,6 +1038,158 @@ SCENARIOS["T4-14"] = [
 ]
 
 
+# T4-15 JSON 불러오기 (docs/05_작업지시서.md T4-15 검증 방법)
+# 불러올 파일은 저장소 밖 임시 폴더(run.temp_dir)에 만든다.
+
+IN_04 = "불러오기를 완료했습니다."
+VE_17 = "JSON 파일을 읽을 수 없습니다. 기존 데이터는 바뀌지 않았습니다."
+
+
+def ve_18(detail):
+    return f"파일 형식이 올바르지 않습니다. {detail} 기존 데이터는 바뀌지 않았습니다."
+
+
+def c_02(current, file_count):
+    return f"현재 데이터(거래 {current}건)를 불러온 파일의 데이터(거래 {file_count}건)로 모두 교체합니다. 계속하시겠습니까?"
+
+
+def wait_until(run, condition, label):
+    """파일 읽기(file.text())가 비동기라 화면 반영을 짧게 나눠 기다린다."""
+    for _ in range(100):
+        if condition():
+            return
+        run.page.wait_for_timeout(20)
+    raise AssertionError(f"기다린 상태가 오지 않았다: {label}")
+
+
+def write_file(run, name, data):
+    """data 가 str 이면 그대로, 아니면 JSON 으로 임시 폴더에 쓴다."""
+    path = run.temp_dir / name
+    path.write_text(data if isinstance(data, str) else json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def import_file(run, path, action="accept"):
+    """#import-file 로 파일을 고르고, 확인 대화상자가 뜨면 action 으로 처리한다. 결과 메시지나 대화상자를 기다린다."""
+    run.dialog_action = action
+    dialogs = len(run.dialogs)
+    run.page.set_input_files("#import-file", str(path))
+    wait_until(run, lambda: len(run.dialogs) > dialogs or run.text("#data-message") != "", "대화상자 또는 #data-message")
+    if action == "accept" and len(run.dialogs) > dialogs:
+        wait_until(run, lambda: run.text("#data-message") != "", "#data-message")
+    if run.page.input_value("#import-file") != "":
+        raise AssertionError("처리 뒤 #import-file 값이 비어 있지 않다")
+
+
+def screen_texts(run):
+    return {body: row_texts(run, body) for body in ("transactions-body", "holdings-body", "allocation-body", "rebalance-body")}
+
+
+def expect_unchanged(run, before_texts, before_data):
+    if screen_texts(run) != before_texts:
+        raise AssertionError("화면이 바뀌었다")
+    if stored_data(run) != before_data:
+        raise AssertionError(f"저장 객체가 바뀌었다: {stored_data(run)}")
+
+
+def t4_15_r06_file(run):
+    run.open_with_data(fixtures.case_data("C-01"))
+    before_texts, before_data = screen_texts(run), stored_data(run)
+    path = write_file(run, "r06.json", fixtures.case_data("R-06"))
+    import_file(run, path, "dismiss")
+    run.expect_dialog(c_02(3, 4))
+    expect_unchanged(run, before_texts, before_data)
+    run.expect_text("#data-message", "")
+    # 같은 파일을 연속으로 다시 고른다
+    import_file(run, path, "accept")
+    run.expect_dialog(c_02(3, 4))
+    if len(run.dialogs) != 2:
+        raise AssertionError(f"대화상자 수: 기대 2, 실제 {len(run.dialogs)}")
+    run.expect_text("#data-message", INFO + IN_04)
+    if stored_data(run) != fixtures.case_data("R-06"):
+        raise AssertionError(f"불러온 뒤 저장 객체: {stored_data(run)}")
+    if target_values(run) != ["50", "35.5", "10", "4.5"]:
+        raise AssertionError(f"불러온 뒤 목표 비중 입력칸: {target_values(run)}")
+    names = [row[0] for row in row_texts(run, "holdings-body")]
+    if names != ["종목N", "종목O", "현금", "종목P"]:
+        raise AssertionError(f"불러온 뒤 보유 현황: {names}")
+    run.expect_text("#target-sum", "100.0%")
+    expect_rows(run, "rebalance-body", 4)
+
+
+def expect_rejected(run, name, content, message):
+    run.open_with_data(fixtures.case_data("C-01"))
+    before_texts, before_data = screen_texts(run), stored_data(run)
+    import_file(run, write_file(run, name, content))
+    run.expect_text("#data-message", ERROR + message)
+    if run.dialogs:
+        raise AssertionError(f"검증 실패인데 대화상자가 떴다: {run.dialogs}")
+    expect_unchanged(run, before_texts, before_data)
+
+
+def t4_15_not_json(run):
+    expect_rejected(run, "broken.json", "{", VE_17)
+
+
+def t4_15_version(run):
+    data = {**fixtures.case_data("R-06"), "version": 2}
+    expect_rejected(run, "v2.json", data, "지원하지 않는 데이터 버전입니다(version: 2). 기존 데이터는 바뀌지 않았습니다.")
+
+
+def t4_15_extra_key(run):
+    data = fixtures.case_data("R-06")
+    data["transactions"][0]["memo"] = "x"
+    expect_rejected(run, "extra.json", data, ve_18("transactions 1번째 항목: 거래 항목이 올바르지 않습니다(memo)."))
+
+
+def t4_15_over_sell(run):
+    data = fixtures.case_data("C-07")
+    data["transactions"].append({"id": "C07-2", "date": "2026-07-05", "name": "종목G", "assetClass": "stock",
+                                 "type": "sell", "quantity": 5, "price": 1100, "fee": 0})  # 03 14.8 추가 시도
+    expect_rejected(run, "oversell.json", data, ve_18("2026-07-10 '종목G' 매도 수량(8)이 그 시점 보유수량(5)보다 많습니다."))
+
+
+def t4_15_prune(run):
+    run.open()
+    data = fixtures.case_data("R-01")
+    data["prices"]["없는종목"] = 1000
+    import_file(run, write_file(run, "prune.json", data))
+    run.expect_dialog(c_02(0, 3))
+    run.expect_text("#data-message", INFO + IN_04)
+    if stored_prices(run) != {"종목S": 70000, "종목T": 100000}:
+        raise AssertionError(f"불러온 뒤 prices: {stored_prices(run)}")
+
+
+def t4_15_round_trip(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    before = screen_texts(run)
+    name, text = export_file(run)
+    path = write_file(run, name, text)
+    # 화면을 바꾼 뒤 내보낸 파일을 다시 불러온다
+    enter_price(run, "종목N", "60000")
+    run.page.fill("#target-stock", "40")
+    if screen_texts(run) == before:
+        raise AssertionError("바꾼 뒤에도 화면이 같다")
+    import_file(run, path)
+    run.expect_dialog(c_02(4, 4))
+    after = screen_texts(run)
+    if after != before:
+        raise AssertionError(f"왕복 뒤 화면: 기대 {before}, 실제 {after}")
+    if target_values(run) != ["50", "35.5", "10", "4.5"]:
+        raise AssertionError(f"왕복 뒤 목표 비중 입력칸: {target_values(run)}")
+
+
+SCENARIOS["T4-15"] = [
+    ("R-06 파일 C-02 취소는 그대로, 같은 파일 다시 골라 확인하면 교체", t4_15_r06_file),
+    ("JSON 아닌 파일 VE-17", t4_15_not_json),
+    ("version 2 파일 VE-19", t4_15_version),
+    ("거래 키가 하나 더 있는 파일 VE-18(VD-03, VE-23)", t4_15_extra_key),
+    ("초과 매도 파일 VE-18(VE-25)", t4_15_over_sell),
+    ("거래 없는 종목의 현재가 키는 제거", t4_15_prune),
+    ("내보내기 -> 불러오기 왕복 화면 같음", t4_15_round_trip),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------
