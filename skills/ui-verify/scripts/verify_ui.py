@@ -141,6 +141,68 @@ SCENARIOS["T3-01"] = [
 ]
 
 
+# T3-02 style.css 변수와 기본 스타일 (docs/05_작업지시서.md T3-02 검증 방법)
+
+def t3_02_widths(run):
+    run.open()
+    run.check_widths()
+
+
+def t3_02_two_columns(run):
+    run.open()
+    for width in (1024, 1280):  # 04 7.5 넓음 기준점 이상
+        run.page.set_viewport_size({"width": width, "height": 800})
+        tops = run.page.evaluate(
+            """() => ['allocation-section', 'rebalance-group']
+                .map(id => document.getElementById(id).getBoundingClientRect().top)"""
+        )
+        if tops[0] != tops[1]:
+            raise AssertionError(f"{width}px: #allocation-section top {tops[0]}, #rebalance-group top {tops[1]}")
+
+
+def t3_02_numeric_font(run):
+    run.open()
+    wrong = run.page.evaluate(
+        """() => [...document.querySelectorAll('.num')]
+            .filter(el => getComputedStyle(el).fontVariantNumeric !== 'tabular-nums')
+            .map(el => el.textContent.trim() || el.id || el.tagName)"""
+    )
+    if wrong:
+        raise AssertionError(f"tabular-nums 아님: {', '.join(wrong)}")
+
+
+def t3_02_focus_ring(run):
+    run.open()
+    expected = run.page.evaluate(
+        """() => [...document.querySelectorAll('input, select, button')]
+            .filter(el => !el.hidden && el.type !== 'hidden').map(el => el.id)"""
+    )
+    seen = {}
+    for _ in range(len(expected) * 4):  # 날짜 입력칸은 칸 안의 연, 월, 일로 Tab 이 여러 번 머문다
+        run.page.keyboard.press("Tab")
+        state = run.page.evaluate(
+            "() => [document.activeElement.id, getComputedStyle(document.activeElement).outlineStyle]"
+        )
+        if state[0] in expected and state[0] not in seen:
+            seen[state[0]] = state[1]
+        if len(seen) == len(expected):
+            break
+    missing = [i for i in expected if i not in seen]
+    if missing:
+        raise AssertionError(f"Tab 으로 가지 못한 요소: {', '.join(missing)}")
+    wrong = [f"{i}({style})" for i, style in seen.items() if style != "solid"]
+    if wrong:
+        raise AssertionError(f"포커스 링 outlineStyle 이 solid 아님: {', '.join(wrong)}")
+
+
+SCENARIOS["T3-02"] = [
+    ("360, 768, 1280px 가로 스크롤 없음", t3_02_widths),
+    ("1024px 이상 자산 비중과 리밸런싱 두 열", t3_02_two_columns),
+    (".num 숫자 글꼴 tabular-nums", t3_02_numeric_font),
+    ("Tab 이동 시 포커스 링", t3_02_focus_ring),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------
