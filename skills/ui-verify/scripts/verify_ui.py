@@ -273,13 +273,10 @@ def t4_07_empty(run):
     run.open()
     expect_hidden(run, "#transactions-empty", False)
     expect_hidden(run, "#transactions-table", True)
-    today = run.page.evaluate(
-        "(() => { const d = new Date(); const p = n => String(n).padStart(2, '0');"
-        " return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })()"
-    )
+    expected = today(run)
     actual = run.page.input_value("#tx-date")
-    if actual != today:
-        raise AssertionError(f"#tx-date 값: 기대 {today}, 실제 {actual!r}")
+    if actual != expected:
+        raise AssertionError(f"#tx-date 값: 기대 {expected}, 실제 {actual!r}")
 
 
 def t4_07_add(run):
@@ -1228,6 +1225,12 @@ def t4_16_widths(run):
     section = run.page.evaluate("document.getElementById('data-section').getBoundingClientRect().width")
     if not boxes[1][0] > boxes[0][0] or min(boxes[0][1], boxes[1][1]) < section / 2:
         raise AssertionError(f"360px: 데이터 관리 버튼이 세로로 쌓인 전체 너비가 아니다 {boxes}")
+    # 640px 미만은 폼 항목 한 줄에 하나(04 7.5). 목표 비중 입력칸도 세로로 쌓인다
+    tops = run.page.evaluate(
+        "() => ['target-stock', 'target-bond'].map(id => document.getElementById(id).getBoundingClientRect().top)"
+    )
+    if not tops[1] > tops[0]:
+        raise AssertionError(f"360px: 목표 비중 입력칸이 한 줄에 하나가 아니다 {tops}")
 
 
 def focus_key(run):
@@ -1262,6 +1265,10 @@ def t4_16_tab_order(run):
 
 
 def t4_16_keyboard(run):
+    # 파일 선택 창 가로채기는 듣는 함수를 등록할 때 비동기로 켜진다. expect_file_chooser 를 Enter 직전에 쓰면
+    # Enter 가 먼저 처리되어 창을 놓치는 일이 있으므로 페이지를 열기 전에 등록해 둔다.
+    choosers = []
+    run.page.on("filechooser", lambda chooser: choosers.append(chooser))
     run.open_with_data(fixtures.case_data("R-06"))
     kb = run.page.keyboard
     # 거래 추가: Tab 으로 옮겨 가며 입력하고 수수료 칸에서 Enter 로 제출한다(날짜는 처음 값 오늘)
@@ -1292,13 +1299,6 @@ def t4_16_keyboard(run):
     kb.type("5")
     if stored_targets(run)["other"] != 5:
         raise AssertionError(f"키보드 목표 비중 입력: {stored_targets(run)}")
-    # 삭제: 마지막 거래(종목Q)의 삭제 버튼에서 Enter, 확인 accept
-    run.page.locator(DELETE_BUTTON_SELECTOR).nth(4).focus()
-    kb.press("Enter")
-    run.expect_dialog(f"{today(run)} 종목Q 매수 3 거래를 삭제하시겠습니까?")
-    expect_rows(run, "transactions-body", 4)
-    if run.page.evaluate("document.activeElement.id") != "transactions-heading":
-        raise AssertionError("마지막 행 삭제 뒤 포커스가 거래 내역 제목이 아니다")
     # 내보내기와 불러오기 버튼
     run.page.focus("#export-button")
     with run.page.expect_download() as info:
@@ -1306,12 +1306,21 @@ def t4_16_keyboard(run):
     if not info.value.suggested_filename.startswith("portfolio-tracker-"):
         raise AssertionError(f"키보드 내보내기 파일 이름: {info.value.suggested_filename}")
     run.page.focus("#import-button")
-    with run.page.expect_file_chooser() as chooser:
-        kb.press("Enter")
-    chooser.value.set_files(str(write_file(run, "r06.json", fixtures.case_data("R-06"))))
+    kb.press("Enter")
+    wait_until(run, lambda: choosers, "파일 선택 창")
+    choosers[0].set_files(str(write_file(run, "r06.json", fixtures.case_data("R-06"))))
     wait_until(run, lambda: run.text("#data-message") != "", "#data-message")
     run.expect_text("#data-message", INFO + IN_04)
+    run.expect_dialog(c_02(5, 4))
     expect_rows(run, "transactions-body", 4)
+    # 삭제: 거래를 하나 더 넣고 마지막 거래(종목Q)의 삭제 버튼에서 Enter, 확인 accept
+    add_transaction(run, date="2026-01-03", name="종목Q", asset_class="stock", type="buy", quantity="3", price="2000")
+    run.page.locator(DELETE_BUTTON_SELECTOR).nth(4).focus()
+    kb.press("Enter")
+    run.expect_dialog("2026-01-03 종목Q 매수 3 거래를 삭제하시겠습니까?")
+    expect_rows(run, "transactions-body", 4)
+    if run.page.evaluate("document.activeElement.id") != "transactions-heading":
+        raise AssertionError("마지막 행 삭제 뒤 포커스가 거래 내역 제목이 아니다")
 
 
 def t4_16_aria(run):
@@ -1357,6 +1366,79 @@ SCENARIOS["T4-16"] = [
     ("키보드만으로 추가, 현재가, 목표 비중, 삭제, 내보내기, 불러오기", t4_16_keyboard),
     ("aria-live, aria-describedby, caption 과 scope", t4_16_aria),
     ("04 3절 금지 요소 0 건", t4_16_forbidden),
+]
+
+
+# T4-17 MVP 완료 점검: 거래 5,000건 성능 (docs/05_작업지시서.md T4-17 검증 방법, 01 NFR-03, NFR-06)
+
+PERF_COUNT = 5000
+PERF_LIMIT_MS = 200  # 01 NFR-06 화면 갱신
+FIRST_PAINT_LIMIT_MS = 1000  # 01 NFR-06 첫 화면
+
+
+def perf_data():
+    """종목 50개에 매수 100건씩, 거래 5,000건의 저장 객체(02 5.5)."""
+    transactions = []
+    for i in range(PERF_COUNT):
+        stock = i % 50
+        transactions.append({
+            "id": f"P-{i}", "date": f"2025-{(i // 500) % 12 + 1:02d}-{(i % 28) + 1:02d}",
+            "name": f"종목{stock:02d}", "assetClass": ("stock", "bond", "cash", "other")[stock % 4],
+            "type": "buy", "quantity": 1 + i % 7, "price": 1000 + i % 300, "fee": i % 3,
+        })
+    prices = {f"종목{s:02d}": 1200 for s in range(0, 50, 2)}
+    return {"version": 1, "transactions": transactions, "prices": prices,
+            "targets": {"stock": 50, "bond": 30, "cash": 0, "other": 20}}
+
+
+def t4_17_performance(run):
+    run.page.set_viewport_size({"width": 1280, "height": 800})
+    run.open()
+    import_file(run, write_file(run, "perf-5000.json", perf_data()))
+    run.expect_dialog(c_02(0, f"{PERF_COUNT:,}"))  # 건수는 formatQuantity(쉼표)
+    run.expect_text("#data-message", INFO + IN_04)
+    expect_rows(run, "transactions-body", PERF_COUNT)
+    expect_rows(run, "holdings-body", 50)
+    expect_rows(run, "rebalance-body", 4)
+
+    # 거래 추가: submit 직전부터 #transactions-body 행 수가 바뀐 직후까지(submit 처리는 동기)
+    fill_transaction(run, date="2026-01-02", name="종목00", asset_class="stock", type="buy", quantity="1", price="1000")
+    add_ms = run.page.evaluate(
+        """() => { const body = document.getElementById('transactions-body'); const before = body.rows.length;
+            const t0 = performance.now(); document.getElementById('transaction-form').requestSubmit();
+            const t1 = performance.now(); return body.rows.length === before + 1 ? t1 - t0 : -1; }"""
+    )
+    # 거래 삭제: 확인 창은 사람이 누르는 시간이 들어가므로 이 측정에서만 바로 확인으로 바꾼다
+    delete_ms = run.page.evaluate(
+        """() => { window.confirm = () => true; const body = document.getElementById('transactions-body');
+            const before = body.rows.length; const button = body.querySelector('button[data-action="delete-transaction"]');
+            const t0 = performance.now(); button.click(); const t1 = performance.now();
+            return body.rows.length === before - 1 ? t1 - t0 : -1; }"""
+    )
+    # 현재가 변경: change 처리는 다음 작업으로 미뤄지므로(05 3.1 M-33) 그 작업이 끝난 뒤를 잰다
+    price_ms = run.page.evaluate(
+        """async () => { const input = document.querySelector('#holdings-body input[data-name="종목01"]');
+            input.value = '1500'; const t0 = performance.now();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve)); const t1 = performance.now();
+            const stored = JSON.parse(localStorage.getItem('portfolio-tracker:v1')).prices['종목01'];
+            return stored === 1500 ? t1 - t0 : -1; }"""
+    )
+    # 첫 화면: 5,000건이 저장된 상태로 새로고침(01 NFR-03 저장 유지 확인을 겸함)
+    run.page.reload()
+    expect_rows(run, "transactions-body", PERF_COUNT)
+    load_ms = run.page.evaluate("performance.getEntriesByType('navigation')[0].loadEventEnd")
+    print(f"T4-17 측정(ms): 추가 {add_ms:.1f}, 삭제 {delete_ms:.1f}, 현재가 변경 {price_ms:.1f}, 첫 화면 load {load_ms:.1f}")
+    problems = [f"{label} {ms:.1f}ms" for label, ms in (("추가", add_ms), ("삭제", delete_ms), ("현재가 변경", price_ms))
+                if ms < 0 or ms > PERF_LIMIT_MS]
+    if load_ms > FIRST_PAINT_LIMIT_MS:
+        problems.append(f"첫 화면 {load_ms:.1f}ms")
+    if problems:
+        raise AssertionError(f"성능 기준 초과 또는 반영 안 됨(-1): {', '.join(problems)}")
+
+
+SCENARIOS["T4-17"] = [
+    ("거래 5,000건 불러오기, 추가, 삭제, 현재가 변경 200ms 와 첫 화면 1초", t4_17_performance),
 ]
 
 

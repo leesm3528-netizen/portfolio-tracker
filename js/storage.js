@@ -3,23 +3,15 @@
 
 import { validateTransactionFields, validateTransactionList } from "./transactions.js";
 import { createDefaultTargets, validateTargets } from "./rebalance.js";
-import { prunePrices } from "./portfolio.js";
+import { fail, isPlainObject, prunePrices } from "./portfolio.js";
 
 const STORAGE_KEY = "portfolio-tracker:v1";
 const DATA_VERSION = 1;
 const DATA_KEYS = ["version", "transactions", "prices", "targets"];
 
-function fail(code, params = {}) {
-  return { ok: false, error: { code, params } };
-}
-
 // VE-18 의 {상세}에 하위 Message 를 넣는다(02 11절).
 function invalidFormat(detail) {
   return fail("VE-18", { detail });
-}
-
-function isPlainObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 export function createEmptyData() {

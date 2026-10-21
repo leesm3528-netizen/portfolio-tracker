@@ -151,10 +151,6 @@ main > section {
   gap: var(--space-4);
 }
 
-#targets-form {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 label {
   display: block;
   margin-bottom: var(--space-1);
@@ -435,7 +431,8 @@ tfoot td {
 /* 7.5 반응형: 중간 */
 
 @media (min-width: 640px) {
-  #transaction-form {
+  #transaction-form,
+  #targets-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

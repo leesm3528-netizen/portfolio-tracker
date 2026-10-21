@@ -1,13 +1,9 @@
 // 거래 생성, 거래 목록 검증, 추가와 삭제. 함수 형식은 docs/02_설계문서.md 7.2, 메시지 ID 는 11절이다.
 // 순수 함수이며 portfolio.js 만 import 한다. 실패는 { code, params } 만 담고 문장을 만들지 않는다.
 
-import { ASSET_CLASSES, CASH_NAME, CASH_PRICE, TRANSACTION_TYPES, calcPositions, parseNumber } from "./portfolio.js";
+import { ASSET_CLASSES, CASH_NAME, CASH_PRICE, TRANSACTION_TYPES, calcPositions, fail, isPlainObject, parseNumber } from "./portfolio.js";
 
 const FIELDS = ["id", "date", "name", "assetClass", "type", "quantity", "price", "fee"];
-
-function fail(code, params = {}) {
-  return { ok: false, error: { code, params } };
-}
 
 // "YYYY-MM-DD" 형식이고 실제 존재하는 날짜인지 본다. 날짜 범위(미래 날짜)는 검사하지 않는다(01 5.2).
 function isValidDate(value) {
@@ -35,8 +31,7 @@ export function createTransaction(input) {
 // 거래 한 건의 필드 검사. 순서는 01 5.1(VE-23, VE-26, VE-01, VE-02, VE-03, VE-22, VE-04, VE-05, VE-06, VE-08)이다.
 // 객체가 아닌 값은 키가 없는 객체로 본다(05 3.1 M-31).
 export function validateTransactionFields(value) {
-  const isObject = value !== null && typeof value === "object" && !Array.isArray(value);
-  const keys = isObject ? Object.keys(value) : [];
+  const keys = isPlainObject(value) ? Object.keys(value) : [];
   const extraKey = keys.find((key) => !FIELDS.includes(key));
   if (extraKey !== undefined) return fail("VE-23", { key: extraKey });
   const missingKey = FIELDS.find((key) => !keys.includes(key));

@@ -226,22 +226,44 @@ function deleteButton(tx) {
   return td;
 }
 
+function transactionRow(tx) {
+  const tr = document.createElement("tr");
+  tr.append(
+    rowHeader(tx.date),
+    cell("td", tx.name),
+    cell("td", ASSET_CLASS_LABELS[tx.assetClass]),
+    cell("td", TRANSACTION_TYPE_LABELS[tx.type]),
+    cell("td", formatQuantity(tx.quantity), "num"),
+    cell("td", formatPrice(tx.price), "num"),
+    cell("td", formatPrice(tx.fee), "num"),
+    deleteButton(tx),
+  );
+  return tr;
+}
+
+// 거래 객체는 바뀌지 않으므로(02 1.2) 같은 거래 객체의 행은 다시 만들지 않고 옮기기만 한다. 새 거래만 행을 만들고
+// 없어진 거래의 행은 지운다. 거래 5,000건에서 표 전체를 다시 만들면 화면 갱신이 200ms 를 넘기 때문이다
+// (01 NFR-06, 05 3.1 M-38). 불러오기는 새 거래 객체이므로 모든 행을 새로 만든다.
+const rowOfTransaction = new WeakMap();
+
 function renderTransactions(transactions) {
+  const body = byId("transactions-body");
   const rows = transactions.map((tx) => {
-    const tr = document.createElement("tr");
-    tr.append(
-      rowHeader(tx.date),
-      cell("td", tx.name),
-      cell("td", ASSET_CLASS_LABELS[tx.assetClass]),
-      cell("td", TRANSACTION_TYPE_LABELS[tx.type]),
-      cell("td", formatQuantity(tx.quantity), "num"),
-      cell("td", formatPrice(tx.price), "num"),
-      cell("td", formatPrice(tx.fee), "num"),
-      deleteButton(tx),
-    );
+    let tr = rowOfTransaction.get(tx);
+    if (tr?.parentNode !== body) {
+      tr = transactionRow(tx);
+      rowOfTransaction.set(tx, tr);
+    }
     return tr;
   });
-  byId("transactions-body").replaceChildren(...rows);
+  // 없어진 행을 먼저 지운 뒤, 순서가 다른 자리에만 행을 넣는다(남은 행은 순서가 그대로이므로 옮기지 않는다).
+  const wanted = new Set(rows);
+  for (const tr of [...body.rows]) if (!wanted.has(tr)) tr.remove();
+  let cursor = body.firstElementChild;
+  for (const tr of rows) {
+    if (tr === cursor) cursor = cursor.nextElementSibling;
+    else body.insertBefore(tr, cursor);
+  }
   byId("transactions-table").hidden = transactions.length === 0;
   byId("transactions-empty").hidden = transactions.length > 0;
 }

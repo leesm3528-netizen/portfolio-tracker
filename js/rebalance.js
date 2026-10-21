@@ -1,7 +1,7 @@
 // 목표 비중과 리밸런싱 계산. 공식의 원본은 docs/03_계산규칙.md 11절, 함수 형식은 docs/02_설계문서.md 7.3 이다.
 // DOM 과 브라우저 전역을 쓰지 않고 portfolio.js 만 import 한다.
 
-import { ASSET_CLASSES, calcTotalValue, parseNumber } from "./portfolio.js";
+import { ASSET_CLASSES, calcTotalValue, fail, isPlainObject, parseNumber } from "./portfolio.js";
 
 const TARGET_TOTAL = 100;
 
@@ -16,7 +16,7 @@ function targetValueError(value) {
 export function parseTargetInput(raw) {
   const value = parseNumber(raw);
   const code = value === null ? "VE-13" : targetValueError(value);
-  return code === null ? { ok: true, value } : { ok: false, error: { code, params: {} } };
+  return code === null ? { ok: true, value } : fail(code);
 }
 
 export function createDefaultTargets() {
@@ -25,10 +25,10 @@ export function createDefaultTargets() {
 
 // 키 4개 정확히, 각 값의 범위와 자릿수를 본다. 합계는 검사하지 않는다(02 5.4, 7.3).
 export function validateTargets(value) {
-  const keys = value !== null && typeof value === "object" && !Array.isArray(value) ? Object.keys(value) : [];
+  const keys = isPlainObject(value) ? Object.keys(value) : [];
   const valid = keys.length === ASSET_CLASSES.length
     && ASSET_CLASSES.every((assetClass) => keys.includes(assetClass) && targetValueError(value[assetClass]) === null);
-  return valid ? { ok: true, value } : { ok: false, error: { code: "VD-06", params: {} } };
+  return valid ? { ok: true, value } : fail("VD-06");
 }
 
 // 각 값을 10배 해 정수로 반올림한 합을 10으로 나눈다(03 11.1, 02 7.3).
@@ -39,9 +39,9 @@ export function sumTargets(targets) {
 // 리밸런싱 결과(02 6.5). 판정 기준은 |amount| 0.5 경계(03 11.3, 13.1)다.
 export function calcRebalance(classValues, targets) {
   const totalValue = calcTotalValue(classValues);
-  if (totalValue === 0) return { ok: false, error: { code: "VE-16", params: {} } };
+  if (totalValue === 0) return fail("VE-16");
   const sum = sumTargets(targets);
-  if (sum !== TARGET_TOTAL) return { ok: false, error: { code: "VE-15", params: { sum } } };
+  if (sum !== TARGET_TOTAL) return fail("VE-15", { sum });
   const rows = ASSET_CLASSES.map((assetClass) => {
     const currentValue = classValues[assetClass];
     const targetWeight = targets[assetClass];

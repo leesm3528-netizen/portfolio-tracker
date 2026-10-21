@@ -8,6 +8,16 @@ export const TRANSACTION_TYPE_LABELS = { buy: "매수", sell: "매도" };
 export const CASH_NAME = "현금";
 export const CASH_PRICE = 1;
 
+// 실패 Result(02 4.1). 계산과 검증 모듈이 같이 쓴다(05 3.1 M-37).
+export function fail(code, params = {}) {
+  return { ok: false, error: { code, params } };
+}
+
+// 객체(배열과 null 아님) 판정(02 7.1). 거래 항목, 목표 비중, 저장 객체 검사가 같이 쓴다.
+export function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 // 입력 숫자 해석(02 7.1). 범위 검사는 호출한 쪽이 한다.
 export function parseNumber(raw) {
   const trimmed = raw.trim();
@@ -103,7 +113,7 @@ export function updatePrice(prices, name, raw) {
     return { ok: true, value: Object.fromEntries(Object.entries(prices).filter(([key]) => key !== name)) };
   }
   const price = parseNumber(raw);
-  if (price === null || price <= 0) return { ok: false, error: { code: "VE-12", params: {} } };
+  if (price === null || price <= 0) return fail("VE-12");
   return { ok: true, value: { ...prices, [name]: price } };
 }
 
