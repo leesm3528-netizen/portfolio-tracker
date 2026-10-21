@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-2단계(프로젝트 전용 스킬) 진행 중. T2-01~T2-04 를 마쳤다. 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 2단계 마지막 작업은 T2-05 다(docs/05_작업지시서.md 1.6). HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
+2단계 완료, 다음 3단계 T3-01. T2-01~T2-05 를 마쳤다(2단계 마지막 작업 T2-05, docs/05_작업지시서.md 1.6). 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 4단계는 3단계 끝(T3-02) 보고 후 다시 승인을 받는다. HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
 
 ## 완료한 작업
 
+- T2-05 ui-verify 스킬 작성: skills/ui-verify/SKILL.md, scripts/verify_ui.py, scripts/fixtures.py. py_compile 통과, --list 시나리오 0 개 종료 코드 0, T9-99 와 모르는 옵션 종료 코드 1, 인자 없이 실행 시나리오 0 개 종료 코드 0, case_data("R-06") 키 4개와 거래 4건 필드 8개 확인. 저장소 밖 복사본에 임시 시나리오 4개와 임시 index.html 을 넣어 Playwright 실행 경로(서버 기동과 종료, fixture 주입과 새로고침 유지, 대화상자 기록, 콘솔 오류, 외부 요청, 너비, 문구 불일치, --base-url, playwright 없음 안내)를 시험해 정의대로 판정됨을 확인했다. 저장소에 __pycache__ 없음. R-02 목표 비중 선택을 M-27(미해결)로 추가.
 - T2-04 verify.mjs 작성: skills/calc-rule-verify/scripts/verify.mjs. C-01~C-15, R-01~R-06 을 검사 442 개로 옮겼다. node --check 통과, js/ 없는 상태에서 옵션 없이 442 건 SKIP 종료 코드 1, --allow-missing 종료 코드 0, C-01 과 R 지정 동작 확인, 알 수 없는 인자(X-1, --foo, C-99) 종료 코드 1. 저장소 밖 임시 폴더에 03 공식대로 만든 모의 모듈과 스크립트 복사본으로 시험해 442 건 PASS, 일부러 틀린 구현 10 가지는 해당 사례에서 FAIL 또는 SKIP 으로 판정됨을 확인했다(모의 모듈은 커밋하지 않음). 거래 행 전사를 03 원문과 기계 대조해 일치.
 - T2-03 calc-rule-verify 스킬 문서 작성: skills/calc-rule-verify/SKILL.md. 실행 명령과 옵션은 05 2.2 와 같다. 03 에 없는 사례 ID 도 알 수 없는 인자로 보고 종료 코드 1 로 정했다. 이모지 검사 0 건.
 - T2-02 handoff-update 스킬 작성: skills/handoff-update/SKILL.md. 이 스킬 절차로 이 HANDOFF.md 를 갱신했다. 이모지 검사 0 건, "## " 제목 5개의 이름과 순서가 AGENTS.md 9절과 같다.
@@ -20,20 +21,21 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T2-05 ui-verify 스킬 작성
+1. T3-01 index.html 영역 마크업
 
 ## 알려진 문제
 
-1. 외부 스킬 doc-coauthoring, frontend-design, webapp-testing 이 설치되어 있지 않다. skill-creator 만 있다. 같은 원칙으로 진행한다(CLAUDE.md 2절). 화면 검증은 프로젝트 스킬 skills/ui-verify(T2-05)로 대신한다. 관련 작업: T2-01~T2-05, T3-01 이후 화면 작업.
-2. 화면 검증 환경: 작성자 PC 에는 Python 3.14(`py`), playwright 패키지, Chromium 156 이 설치되어 있다(2026-10-21 확인). 다른 PC 에서는 `py -m pip install playwright`, `py -m playwright install chromium` 을 먼저 실행한다. T2-05 는 playwright 없이도 `--list` 와 py_compile 로 완료 기준을 확인할 수 있게 정했다. 관련 작업: T2-05, T3-01 이후 화면 작업.
-3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 관련 작업: T2-04, T4-01~T4-05.
+1. 외부 스킬 doc-coauthoring, frontend-design, webapp-testing 이 설치되어 있지 않다. skill-creator 만 있다. 같은 원칙으로 진행한다(CLAUDE.md 2절). 화면 검증은 프로젝트 스킬 skills/ui-verify(T2-05)로 대신한다. 관련 작업: T3-01 이후 화면 작업.
+2. 화면 검증 환경: 작성자 PC 에는 Python 3.14(`py`), playwright 1.64.0, Chromium 이 설치되어 있다(2026-10-21 확인). 다른 PC 에서는 `py -m pip install playwright`, `py -m playwright install chromium` 을 먼저 실행한다. Git Bash 에서 verify_ui.py 출력을 파이프로 받으면 한글이 깨지므로 `PYTHONUTF8=1` 을 붙인다(skills/ui-verify/SKILL.md 4.1). 관련 작업: T3-01 이후 화면 작업.
+3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 재현: `node skills/calc-rule-verify/scripts/verify.mjs; echo $?`. 관련 작업: T4-01~T4-05.
+4. M-27(미해결): 03 R-02 의 목표 비중 시도 a, b 중 fixtures.case_data("R-02") 가 어느 쪽을 넣을지 문서에 없다. T2-05 는 권장안(`attempt` 인자, 기본 "a")으로 임시 구현했다. 사용자 결정이 필요하다. 재현: `py -c "import sys; sys.path.insert(0, 'skills/ui-verify/scripts'); import fixtures; print(fixtures.case_data('R-02')['targets'])"`. 관련 작업: T4-12, T4-13(R-02 fixture 를 쓸 때).
 
 ## 다음 작업자에게 주의사항
 
 1. 이전 작업의 대화 기록은 볼 수 없다. 이 파일, AGENTS.md, docs/, skills/ 만이 근거다. 사용자와 새로 정한 내용은 반드시 원본 문서에 적는다.
-2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 M-27 부터 "미해결" 로 추가하고 사용자에게 묻는다.
+2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-28 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27 은 미해결이다(알려진 문제 4).
 3. 화면 메시지 문구의 원본은 docs/01_요구사항.md 5절 하나다. 계산과 검증 모듈은 문장을 만들지 않고 `{ code, params }` 만 반환한다(docs/02_설계문서.md 4.1, 11절).
-4. 2단계 작업 순서: T2-01 -> T2-02, T2-03, T2-05(모두 T2-01 선행) -> T2-04(T2-03 선행). 2단계 마지막 작업 T2-05 를 커밋하면 AGENTS.md 10절 형식으로 보고한다. 사용자가 3단계까지 연속 진행을 승인했으므로 보고 후 3단계(T3-01)를 이어서 할 수 있다. 4단계는 3단계 끝(T3-02) 보고 후 다시 승인을 받는다.
+4. 3단계는 T3-01 -> T3-02 순서이며 index.html, css/style.css 만 만든다(05 3.1 M-25). T3-01 부터 화면 시나리오를 skills/ui-verify/scripts/verify_ui.py 에 작업 ID 로 추가한다. 3단계 마지막 작업 T3-02 를 커밋하면 AGENTS.md 10절 형식으로 보고하고 4단계 승인을 받는다.
 5. 결정 항목은 "03 D-01" 처럼 문서 번호를 붙여 부른다. 문서마다 D 번호가 따로 매겨져 있다.
 6. 모든 문서에 이모지와 장식 기호를 쓰지 않는다. 화살표는 "->" 만 쓴다. 문체는 평서문 "~한다/~이다" 다. 화면 문구 인용만 "~합니다/~하세요" 다.
 7. 진행 상태는 `git log --oneline` 으로도 확인한다. 커밋 메시지는 작업 ID 로 시작한다.
