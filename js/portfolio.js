@@ -96,6 +96,17 @@ export function buildAllocation(classValues) {
   return { totalValue, rows };
 }
 
+// 현재가 입력 규칙(02 7.1). 빈칸은 키를 지워 현재가 미입력으로 되돌리고, 0 보다 큰 수만 저장한다.
+export function updatePrice(prices, name, raw) {
+  if (name === CASH_NAME) return { ok: true, value: prices };
+  if (raw.trim() === "") {
+    return { ok: true, value: Object.fromEntries(Object.entries(prices).filter(([key]) => key !== name)) };
+  }
+  const price = parseNumber(raw);
+  if (price === null || price <= 0) return { ok: false, error: { code: "VE-12", params: {} } };
+  return { ok: true, value: { ...prices, [name]: price } };
+}
+
 // 거래가 없는 종목과 현금 키를 뺀 현재가 객체(02 5.3)
 export function prunePrices(prices, transactions) {
   const names = new Set(transactions.map((tx) => tx.name));

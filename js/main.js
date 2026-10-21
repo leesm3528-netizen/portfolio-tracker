@@ -4,7 +4,7 @@
 import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, showMessage } from "./ui.js";
 import { createEmptyData, loadData, saveData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
-import { buildHoldings, calcPositions, prunePrices, sortTransactions } from "./portfolio.js";
+import { buildHoldings, calcPositions, prunePrices, sortTransactions, updatePrice } from "./portfolio.js";
 
 let state;
 
@@ -59,6 +59,17 @@ const handlers = {
     clearMessage("transactions");
     commit({ ...state, transactions: result.value, prices: prunePrices(state.prices, result.value) });
     return true;
+  },
+
+  // 실패하면 commit 과 렌더를 하지 않으므로 입력칸에는 사용자가 입력한 값이 남는다(02 8절).
+  onPriceChange(name, raw) {
+    const result = updatePrice(state.prices, name, raw);
+    if (!result.ok) {
+      showMessage("holdings", result.error, "error");
+      return;
+    }
+    clearMessage("holdings");
+    commit({ ...state, prices: result.value });
   },
 };
 

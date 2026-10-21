@@ -493,6 +493,7 @@ SCENARIOS["T4-08"] = [
 # T4-09 보유 현황 표 (docs/05_작업지시서.md T4-09 검증 방법)
 # 기대값은 03 14절 사례의 표시값(03 13.2 자릿수, 04 8절 형식)이다.
 # 칸 순서: 종목명, 자산군, 보유수량, 평균단가, 현재가, 평가금액, 평가손익, 수익률, 실현손익(02 9.3)
+# T4-10 부터 현재가 칸은 입력칸이므로 칸 텍스트는 입력칸 값 + 칸 글자("현재가 미입력")다.
 
 
 def case_subset(case_id, indexes):
@@ -503,10 +504,11 @@ def case_subset(case_id, indexes):
 
 
 def holding_cells(run, name):
-    """보유 현황에서 종목명이 name 인 행의 칸별 (텍스트, 색 클래스) 목록."""
+    """보유 현황에서 종목명이 name 인 행의 칸별 (텍스트, 색 클래스) 목록. 입력칸이 있으면 그 값을 앞에 붙인다."""
     rows = run.page.evaluate(
         """() => [...document.getElementById('holdings-body').rows].map(tr => [...tr.cells].map(c => [
-            c.innerText.trim(), ['value-up', 'value-down'].filter(k => c.classList.contains(k)).join(' ')]))"""
+            ((c.querySelector('input') ? c.querySelector('input').value + ' ' : '') + c.innerText).trim(),
+            ['value-up', 'value-down'].filter(k => c.classList.contains(k)).join(' ')]))"""
     )
     for row in rows:
         if row[0][0] == name:
@@ -528,7 +530,7 @@ def expect_holding(run, name, texts, colors=None):
 
 def t4_09_c02(run):
     run.open_with_data(fixtures.case_data("C-02"))
-    expect_holding(run, "종목B", ["종목B", "주식", "30", "5,450.00", "6,000", "180,000", "+16,500", "+10.09", "0"],
+    expect_holding(run, "종목B", ["종목B", "주식", "30", "5,450.00", "6000", "180,000", "+16,500", "+10.09", "0"],
                    {6: "value-up", 7: "value-up"})
     expect_hidden(run, "#holdings-empty", True)
     first = run.page.locator("#holdings-body tr").first.locator("th")
@@ -538,7 +540,7 @@ def t4_09_c02(run):
 
 def t4_09_c11(run):
     run.open_with_data(fixtures.case_data("C-11"))
-    expect_holding(run, "종목K", ["종목K", "주식", "2", "10,166.67", "11,000", "22,000", "+1,667", "+8.20", "+1,833"],
+    expect_holding(run, "종목K", ["종목K", "주식", "2", "10,166.67", "11000", "22,000", "+1,667", "+8.20", "+1,833"],
                    {6: "value-up", 7: "value-up", 8: "value-up"})
 
 
@@ -579,7 +581,7 @@ def t4_09_order(run):
     names = [row[0] for row in row_texts(run, "holdings-body")]
     if names != ["종목N", "종목O", "현금", "종목P"]:
         raise AssertionError(f"행 순서: {names}")
-    expect_holding(run, "종목N", ["종목N", "주식", "10", "50,500.00", "55,000", "550,000", "+45,000", "+8.91", "0"],
+    expect_holding(run, "종목N", ["종목N", "주식", "10", "50,500.00", "55000", "550,000", "+45,000", "+8.91", "0"],
                    {6: "value-up", 7: "value-up"})
 
 
@@ -599,6 +601,115 @@ SCENARIOS["T4-09"] = [
     ("C-03 실현손익 음수 손실 색", t4_09_realized_loss),
     ("R-06 행 순서와 종목N 표시값", t4_09_order),
     ("종목 0개 빈 상태 문구", t4_09_empty),
+]
+
+
+# T4-10 현재가 입력 (docs/05_작업지시서.md T4-10 검증 방법)
+
+VE_12 = "현재가는 0보다 큰 숫자로 입력하세요."
+C01_PRICED = ["종목A", "주식", "15", "11,000.00", "12000", "180,000", "+15,000", "+9.09", "+10,000"]  # 현재가 12000
+
+
+def price_input(run, name):
+    return run.page.locator(f'#holdings-body input[data-action="set-price"][data-name="{name}"]')
+
+
+def enter_price(run, name, value):
+    """현재가 입력칸에 값을 넣고 Tab 으로 벗어난다(change 이벤트). ui.js 는 처리를 다음 작업으로 미루므로(M-33) 그 처리가 끝나기를 기다린다."""
+    field = price_input(run, name)
+    field.fill(value)
+    field.press("Tab")
+    settle(run)
+
+
+def settle(run):
+    """페이지에 이미 예약된 setTimeout 작업이 실행될 때까지 기다린다."""
+    run.page.evaluate("() => new Promise((resolve) => setTimeout(resolve))")
+
+
+def stored_prices(run):
+    return stored_data(run)["prices"]
+
+
+def t4_10_set_price(run):
+    run.open_with_data(fixtures.case_data("C-01"))
+    enter_price(run, "종목A", "12000")
+    expect_holding(run, "종목A", C01_PRICED, {6: "value-up", 7: "value-up", 8: "value-up"})
+    if stored_prices(run) != {"종목A": 12000}:
+        raise AssertionError(f"prices: {stored_prices(run)}")
+    run.page.reload()
+    expect_holding(run, "종목A", C01_PRICED, {6: "value-up", 7: "value-up", 8: "value-up"})
+    label = price_input(run, "종목A").get_attribute("aria-label")
+    mode = price_input(run, "종목A").get_attribute("inputmode")
+    if label != "종목A 현재가" or mode != "decimal":
+        raise AssertionError(f"현재가 입력칸 aria-label {label!r}, inputmode {mode!r}")
+
+
+def t4_10_clear_price(run):
+    run.open_with_data(fixtures.case_data("C-01"))
+    enter_price(run, "종목A", "12000")
+    enter_price(run, "종목A", "")
+    expect_holding(run, "종목A", ["종목A", "주식", "15", "11,000.00", "현재가 미입력", "165,000", "0", "0.00", "+10,000"],
+                   {8: "value-up"})
+    if "종목A" in stored_prices(run):
+        raise AssertionError(f"비웠는데 prices 에 종목A 키가 있다: {stored_prices(run)}")
+
+
+def t4_10_invalid_price(run):
+    run.open_with_data(fixtures.case_data("C-01"))
+    enter_price(run, "종목A", "12000")
+    for value in ("0", "-1"):
+        enter_price(run, "종목A", value)
+        run.expect_text("#holdings-message", ERROR + VE_12)
+        if stored_prices(run) != {"종목A": 12000}:
+            raise AssertionError(f"{value}: prices 가 바뀌었다 {stored_prices(run)}")
+        actual = price_input(run, "종목A").input_value()
+        if actual != value:
+            raise AssertionError(f"{value}: 입력칸 값이 되돌려졌다 {actual!r}")
+    # 숫자로 해석되지 않는 값(브라우저 badInput)은 미입력이 아니라 오류다(05 3.1 M-32)
+    field = price_input(run, "종목A")
+    field.fill("")
+    field.focus()
+    run.page.keyboard.type("1e")
+    run.page.keyboard.press("Tab")
+    settle(run)
+    run.expect_text("#holdings-message", ERROR + VE_12)
+    if stored_prices(run) != {"종목A": 12000}:
+        raise AssertionError(f"badInput: prices 가 바뀌었다 {stored_prices(run)}")
+    # 다음 성공 때 오류가 사라진다
+    enter_price(run, "종목A", "13000")
+    run.expect_text("#holdings-message", "")
+
+
+def t4_10_tab_focus(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    enter_price(run, "종목N", "56000")
+    focus = active_element(run)
+    if focus != {"id": "", "action": "set-price", "key": "종목O"}:
+        raise AssertionError(f"Tab 뒤 포커스: 기대 종목O 현재가 입력칸, 실제 {focus}")
+    cells = holding_cells(run, "종목N")
+    if cells[5][0] != "560,000":
+        raise AssertionError(f"종목N 평가금액: {cells[5][0]}")
+
+
+def t4_10_prune_on_delete(run):
+    run.open_with_data(fixtures.case_data("C-01"))
+    enter_price(run, "종목A", "12000")
+    delete_row(run, 2)
+    delete_row(run, 0)
+    if stored_prices(run) != {"종목A": 12000}:
+        raise AssertionError(f"거래가 남았는데 prices 가 바뀌었다: {stored_prices(run)}")
+    delete_row(run, 0)
+    if stored_prices(run) != {}:
+        raise AssertionError(f"거래를 모두 삭제했는데 prices: {stored_prices(run)}")
+
+
+SCENARIOS["T4-10"] = [
+    ("C-01 종목A 현재가 12000 입력과 새로고침 유지", t4_10_set_price),
+    ("현재가를 비우면 미입력과 키 삭제", t4_10_clear_price),
+    ("0, -1, 숫자 아님은 VE-12 와 저장값 유지", t4_10_invalid_price),
+    ("R-06 현재가 입력 뒤 Tab 포커스 유지", t4_10_tab_focus),
+    ("거래를 모두 삭제하면 현재가 키 삭제", t4_10_prune_on_delete),
 ]
 
 

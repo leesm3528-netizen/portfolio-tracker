@@ -55,8 +55,12 @@ const MESSAGE_AREAS = {
   data: "data-message",
 };
 
-// 거래 내역 삭제 버튼(02 9.2)
+// 거래 내역 삭제 버튼(02 9.2)과 보유 현황 현재가 입력칸(02 9.3)
 const DELETE_BUTTON = 'button[data-action="delete-transaction"]';
+const PRICE_INPUT = 'input[data-action="set-price"]';
+
+// 다시 그린 뒤 포커스를 되돌리는 영역(02 7.5)
+const FOCUS_BODIES = ["holdings-body", "transactions-body"];
 
 // 숫자 입력칸에 브라우저가 숫자로 해석하지 못한 글자가 있으면 value 가 빈 문자열이 된다.
 // 빈칸(수수료 0, 현재가 미입력)과 구분하도록 숫자가 아닌 문자열을 넘긴다(05 3.1 M-32).
@@ -170,6 +174,15 @@ export function bindEvents(handlers) {
     if (!handlers.onDeleteTransaction(button.dataset.id)) return;
     (body.querySelectorAll(DELETE_BUTTON)[index] ?? byId("transactions-heading")).focus();
   });
+  // 현재가는 입력칸을 벗어나거나 Enter 일 때(change) 반영한다(02 8절). change 는 Tab 의 포커스 이동이
+  // 끝나기 전에 오므로, 처리를 다음 작업으로 미뤄 다음 입력칸에 포커스가 간 뒤 다시 그린다(05 3.1 M-33).
+  byId("holdings-body").addEventListener("change", (event) => {
+    const input = event.target.closest(PRICE_INPUT);
+    if (!input) return;
+    const { name } = input.dataset;
+    const raw = numberInputValue(input);
+    setTimeout(() => handlers.onPriceChange(name, raw));
+  });
 }
 
 function deleteButton(tx) {
@@ -203,11 +216,21 @@ function renderTransactions(transactions) {
   byId("transactions-empty").hidden = transactions.length > 0;
 }
 
-// 현재가 칸: 현금은 1, 그 밖에는 저장된 현재가. 미입력이면 "현재가 미입력" 을 표시한다(02 9.3).
+// 현재가 칸: 현금은 입력칸 없이 1, 그 밖에는 저장된 현재가(없으면 빈칸)의 입력칸과 "현재가 미입력" 표시(02 9.3).
 function priceCell(row) {
-  if (row.name === CASH_NAME || !row.priceMissing) return cell("td", formatPrice(row.price), "num");
+  if (row.name === CASH_NAME) return cell("td", formatPrice(row.price), "num");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = "any";
+  input.min = "0";
+  input.inputMode = "decimal";
+  input.dataset.action = "set-price";
+  input.dataset.name = row.name;
+  input.setAttribute("aria-label", `${row.name} 현재가`);
+  input.value = row.priceMissing ? "" : String(row.price);
   const td = cell("td", "", "num");
-  td.append(cell("span", PRICE_MISSING, "price-missing"));
+  td.append(input);
+  if (row.priceMissing) td.append(cell("span", PRICE_MISSING, "price-missing"));
   return td;
 }
 
@@ -231,9 +254,25 @@ function renderHoldings(holdings) {
   byId("holdings-empty").hidden = holdings.length > 0;
 }
 
+// 포커스가 표 안 요소에 있으면 그 data-action 과 data-name(거래 행은 data-id)을 기억한다(02 7.5).
+function focusedControl() {
+  const el = document.activeElement;
+  if (!el || !FOCUS_BODIES.some((id) => byId(id).contains(el))) return null;
+  return { action: el.dataset.action, key: el.dataset.name ?? el.dataset.id };
+}
+
+function restoreFocus(saved) {
+  if (!saved) return;
+  const match = FOCUS_BODIES.flatMap((id) => [...byId(id).querySelectorAll("[data-action]")])
+    .find((el) => el.dataset.action === saved.action && (el.dataset.name ?? el.dataset.id) === saved.key);
+  if (match) match.focus();
+}
+
 export function renderApp(view) {
+  const saved = focusedControl();
   renderTransactions(view.transactions);
   renderHoldings(view.holdings);
+  restoreFocus(saved);
 }
 
 // 날짜, 자산군, 구분은 유지하고 나머지를 비운 뒤 날짜 입력칸으로 포커스를 옮긴다(02 7.5).
