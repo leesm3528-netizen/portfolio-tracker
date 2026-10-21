@@ -61,3 +61,26 @@ export function buildHoldings(positions, prices) {
   return rows.sort((a, b) => ASSET_CLASSES.indexOf(a.assetClass) - ASSET_CLASSES.indexOf(b.assetClass)
     || a.name.localeCompare(b.name, "ko"));
 }
+
+// 자산군별 평가금액(02 6.3). 4개 키를 항상 가진다.
+export function sumValueByAssetClass(holdings) {
+  const classValues = Object.fromEntries(ASSET_CLASSES.map((assetClass) => [assetClass, 0]));
+  for (const row of holdings) classValues[row.assetClass] += row.marketValue;
+  return classValues;
+}
+
+// 총평가금액 T(03 10절)
+export function calcTotalValue(classValues) {
+  return ASSET_CLASSES.reduce((sum, assetClass) => sum + classValues[assetClass], 0);
+}
+
+// 자산 비중(02 6.4). 총평가금액이 0 이면 비중은 null 이다.
+export function buildAllocation(classValues) {
+  const totalValue = calcTotalValue(classValues);
+  const rows = ASSET_CLASSES.map((assetClass) => ({
+    assetClass,
+    value: classValues[assetClass],
+    weight: totalValue === 0 ? null : (classValues[assetClass] / totalValue) * 100,
+  }));
+  return { totalValue, rows };
+}

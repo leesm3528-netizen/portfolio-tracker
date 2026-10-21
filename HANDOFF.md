@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-02 를 마쳤고 다음은 T4-03 이다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
+4단계(MVP 구현) 진행 중. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-03 을 마쳤고 다음은 T4-04 다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
 
 ## 완료한 작업
 
+- T4-03 portfolio.js 자산군 합계와 비중: js/portfolio.js 에 `sumValueByAssetClass`, `calcTotalValue`, `buildAllocation` 을 추가했다. `verify.mjs R --allow-missing` 통과 85 / 실패 0 / 건너뜀 82(건너뜀은 모두 아직 없는 rebalance.calcRebalance 검사). R-04 비중 표시값 33.30, 33.30, 33.40, 0.00 과 R-05 총평가금액 0(빈 상태 포함) PASS. 2.5 DOM 접근 검사 0 건.
 - T4-02 portfolio.js 보유 현황 행: js/portfolio.js 에 상수 `ASSET_CLASSES`, `CASH_NAME`, `CASH_PRICE` 와 `buildHoldings` 를 추가했다(03 7.1 현재가 순서, 보유수량 0 행 처리, 자산군 순서와 종목명 ko 정렬). `verify.mjs C --allow-missing` 통과 228 / 실패 0 / 건너뜀 47(건너뜀은 모두 transactions.js 검사), C-10, C-14 지정 실행 통과 20 / 실패 0 / 건너뜀 0. 2.5 DOM 접근 검사 0 건.
 - T4-01 portfolio.js 거래 정렬과 종목 상태 재계산: js/portfolio.js 에 `sortTransactions`, `calcPositions` 를 만들었다(실패 Result 에 `violation`). `verify.mjs C --allow-missing` 통과 152 / 실패 0 / 건너뜀 123(건너뜀은 아직 없는 buildHoldings, transactions.js 검사), C-06, C-07 단계 실패(violation.index 1), C-12 의 calcPositions 검사 모두 PASS. 임시 폴더 Node 확인에서 C-07 전체 거래 결과 VE-25, violation.index 1, 원래 배열 유지. 2.5 DOM 접근 검사와 import 검사 0 건. README 상태 문구를 4단계 진행 중으로 고쳤다.
 
@@ -26,13 +27,13 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T4-03 portfolio.js 자산군 합계와 비중
+1. T4-04 rebalance.js 리밸런싱 계산
 
 ## 알려진 문제
 
 1. 외부 스킬 doc-coauthoring, frontend-design, webapp-testing 이 설치되어 있지 않다. skill-creator 만 있다. 같은 원칙으로 진행한다(CLAUDE.md 2절). 화면 검증은 프로젝트 스킬 skills/ui-verify(T2-05)로 대신한다. 관련 작업: T3-01 이후 화면 작업.
 2. 화면 검증 환경: 작성자 PC 에는 Python 3.14(`py`), playwright 1.64.0, Chromium 이 설치되어 있다(2026-10-21 확인). 다른 PC 에서는 `py -m pip install playwright`, `py -m playwright install chromium` 을 먼저 실행한다. Git Bash 에서 verify_ui.py 출력을 파이프로 받으면 한글이 깨지므로 `PYTHONUTF8=1` 을 붙인다(skills/ui-verify/SKILL.md 4.1). 관련 작업: T3-01 이후 화면 작업.
-3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 재현: `node skills/calc-rule-verify/scripts/verify.mjs; echo $?`. 관련 작업: T4-03~T4-05.
+3. verify.mjs(T2-04)는 js/ 가 없는 동안 옵션 없이 실행하면 모든 검사가 SKIP 이고 종료 코드 1 이다. 이는 docs/05_작업지시서.md T2-04 완료 기준에 정한 정상 동작이며, `--allow-missing` 을 붙이면 종료 코드 0 이다. 옵션 없이 0 이어야 하는 시점은 T4-05 이후다. `--allow-missing` 은 원래 작업 지시에 없던 옵션으로 05 2.2 에 정의했다. 재현: `node skills/calc-rule-verify/scripts/verify.mjs; echo $?`. 관련 작업: T4-04, T4-05.
 
 ## 다음 작업자에게 주의사항
 
