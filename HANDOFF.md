@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-2단계(프로젝트 전용 스킬) 진행 중. T2-01, T2-02 를 마쳤다. 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 2단계 마지막 작업은 T2-05 다(docs/05_작업지시서.md 1.6). T2-02 이후 HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
+2단계(프로젝트 전용 스킬) 진행 중. T2-01~T2-03 을 마쳤다. 사용자가 3단계까지 연속 진행을 승인했으므로 승인 대기 상태가 아니다. 2단계 마지막 작업은 T2-05 다(docs/05_작업지시서.md 1.6). HANDOFF.md 는 skills/handoff-update/SKILL.md 절차로 갱신한다.
 
 ## 완료한 작업
 
+- T2-03 calc-rule-verify 스킬 문서 작성: skills/calc-rule-verify/SKILL.md. 실행 명령과 옵션은 05 2.2 와 같다. 03 에 없는 사례 ID 도 알 수 없는 인자로 보고 종료 코드 1 로 정했다. 이모지 검사 0 건.
 - T2-02 handoff-update 스킬 작성: skills/handoff-update/SKILL.md. 이 스킬 절차로 이 HANDOFF.md 를 갱신했다. 이모지 검사 0 건, "## " 제목 5개의 이름과 순서가 AGENTS.md 9절과 같다.
 - T2-01 doc-writing-rules 스킬 작성: skills/doc-writing-rules/SKILL.md. 이 스킬로 기존 문서 9개를 점검해 05 E-05 의 "평가액" 을 "평가금액" 으로, CLAUDE.md 2절의 playwright 설치 상태를 실제와 맞게 고쳤다. 이모지 검사 10개 파일 0 건, docs 목차와 본문 제목 일치.
 - T1-07 문서 간 불일치 해소: 2026-10-21 사용자 일괄 승인으로 M-01~M-26 과 01/02/03/04 의 모든 결정 항목을 권장안대로 확정하고 원본 문서에 반영했다. 결정 기록은 docs/05_작업지시서.md 3절. 03 에 C-15(현금 매수 수수료) 추가, 05 에 T2-05(ui-verify 스킬) 추가. 이모지 검사 0 건, 목차와 본문 제목 일치.
@@ -18,7 +19,7 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T2-03 calc-rule-verify 스킬 문서 작성
+1. T2-04 verify.mjs 작성
 2. T2-05 ui-verify 스킬 작성
 
 ## 알려진 문제
