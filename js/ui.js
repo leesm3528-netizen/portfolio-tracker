@@ -55,6 +55,9 @@ const MESSAGE_AREAS = {
   data: "data-message",
 };
 
+// 거래 내역 삭제 버튼(02 9.2)
+const DELETE_BUTTON = 'button[data-action="delete-transaction"]';
+
 // 숫자 입력칸에 브라우저가 숫자로 해석하지 못한 글자가 있으면 value 가 빈 문자열이 된다.
 // 빈칸(수수료 0, 현재가 미입력)과 구분하도록 숫자가 아닌 문자열을 넘긴다(05 3.1 M-32).
 const BAD_NUMBER_INPUT = "NaN";
@@ -145,6 +148,26 @@ export function bindEvents(handlers) {
     event.preventDefault();
     handlers.onAddTransaction(readTransactionForm());
   });
+  // 삭제했으면 같은 순번 행(삭제한 행의 다음 행)의 삭제 버튼, 없으면 거래 내역 제목으로 포커스를 옮긴다(02 7.5).
+  const body = byId("transactions-body");
+  body.addEventListener("click", (event) => {
+    const button = event.target.closest(DELETE_BUTTON);
+    if (!button) return;
+    const index = [...body.querySelectorAll(DELETE_BUTTON)].indexOf(button);
+    if (!handlers.onDeleteTransaction(button.dataset.id)) return;
+    (body.querySelectorAll(DELETE_BUTTON)[index] ?? byId("transactions-heading")).focus();
+  });
+}
+
+function deleteButton(tx) {
+  const button = cell("button", "삭제");
+  button.type = "button";
+  button.dataset.action = "delete-transaction";
+  button.dataset.id = tx.id;
+  button.setAttribute("aria-label", `${tx.date} ${tx.name} ${TRANSACTION_TYPE_LABELS[tx.type]} 거래 삭제`);
+  const td = document.createElement("td");
+  td.append(button);
+  return td;
 }
 
 function renderTransactions(transactions) {
@@ -158,7 +181,7 @@ function renderTransactions(transactions) {
       cell("td", formatQuantity(tx.quantity), "num"),
       cell("td", formatPrice(tx.price), "num"),
       cell("td", formatPrice(tx.fee), "num"),
-      cell("td", ""),
+      deleteButton(tx),
     );
     return tr;
   });
@@ -181,6 +204,11 @@ export function showMessage(area, message, kind) {
   const el = byId(MESSAGE_AREAS[area]);
   el.textContent = PREFIXES[kind] + messageText(message);
   el.className = MESSAGE_CLASSES[kind];
+}
+
+// 머리말 없는 확인 문구(C-01, C-02)로 확인 창을 띄운다(02 4.3).
+export function confirmAction(message) {
+  return window.confirm(messageText(message));
 }
 
 export function clearMessage(area) {

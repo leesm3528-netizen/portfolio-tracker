@@ -312,6 +312,20 @@ td.num {
   text-align: right;
 }
 
+/* 10.7 표 안 버튼 */
+
+td button {
+  height: var(--control-height-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: var(--border-width) solid var(--color-border-strong);
+  font-size: var(--font-size-sm);
+}
+
+td button:hover {
+  background: var(--color-surface-subtle);
+}
+
 tbody tr:hover {
   background: var(--color-surface-subtle);
 }

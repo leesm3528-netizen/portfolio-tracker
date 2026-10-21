@@ -287,7 +287,7 @@ def t4_07_add(run):
     run.open()
     add_transaction(run, **C01_FIRST)
     expect_rows(run, "transactions-body", 1)
-    expected = ["2026-01-02", "종목A", "주식", "매수", "10", "10,000", "0", ""]
+    expected = ["2026-01-02", "종목A", "주식", "매수", "10", "10,000", "0", "삭제"]  # 삭제 버튼은 T4-08 부터(02 9.2)
     actual = row_texts(run, "transactions-body")[0]
     if actual != expected:
         raise AssertionError(f"거래 행: 기대 {expected}, 실제 {actual}")
@@ -407,6 +407,86 @@ SCENARIOS["T4-07"] = [
     ("종목명 HTML 문자열은 글자 그대로", t4_07_html_name),
     ("저장 데이터 손상 VE-21", t4_07_corrupt_storage),
     ("저장 실패 VE-20", t4_07_save_failure),
+]
+
+
+# T4-08 거래 삭제 (docs/05_작업지시서.md T4-08 검증 방법)
+
+DELETE_BUTTON_SELECTOR = '#transactions-body button[data-action="delete-transaction"]'
+
+def delete_row(run, index, action="accept"):
+    """거래 내역 index 번째 행의 삭제 버튼을 누르고 확인 대화상자를 action 으로 처리한다."""
+    run.dialog_action = action
+    run.page.locator(DELETE_BUTTON_SELECTOR).nth(index).click()
+
+
+def active_element(run):
+    return run.page.evaluate(
+        "() => ({ id: document.activeElement.id, action: document.activeElement.dataset.action || '',"
+        " key: document.activeElement.dataset.id || document.activeElement.dataset.name || '' })"
+    )
+
+
+def t4_08_reject(run):
+    run.open_with_data(fixtures.case_data("C-09"))
+    delete_row(run, 1)
+    run.expect_dialog("2026-08-02 종목I 매수 5 거래를 삭제하시겠습니까?")
+    run.expect_text("#transactions-message",
+                    ERROR + "이 거래를 삭제하면 2026-08-03 '종목I' 매도가 보유수량을 초과합니다. 거래를 삭제하지 않았습니다.")
+    expect_rows(run, "transactions-body", 3)
+    if len(stored_data(run)["transactions"]) != 3:
+        raise AssertionError("거부했는데 저장 객체의 거래 수가 바뀌었다")
+
+
+def t4_08_dismiss_accept(run):
+    run.open_with_data(fixtures.case_data("C-09"))
+    delete_row(run, 2, "dismiss")
+    expect_rows(run, "transactions-body", 3)
+    run.expect_dialog("2026-08-03 종목I 매도 12 거래를 삭제하시겠습니까?")
+    delete_row(run, 2)
+    expect_rows(run, "transactions-body", 2)
+    run.expect_dialog("2026-08-03 종목I 매도 12 거래를 삭제하시겠습니까?")
+    if len(run.dialogs) != 2:
+        raise AssertionError(f"대화상자 수: 기대 2, 실제 {len(run.dialogs)}")
+    run.page.reload()
+    expect_rows(run, "transactions-body", 2)
+    ids = [tx["id"] for tx in stored_data(run)["transactions"]]
+    if ids != ["C09-0", "C09-1"]:
+        raise AssertionError(f"삭제 후 저장된 거래 id: {ids}")
+
+
+def t4_08_focus(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    label = run.page.locator(DELETE_BUTTON_SELECTOR).first.get_attribute("aria-label")
+    if label != "2026-01-02 종목N 매수 거래 삭제":
+        raise AssertionError(f"삭제 버튼 aria-label: {label!r}")
+    delete_row(run, 0)
+    focus = active_element(run)
+    if focus != {"id": "", "action": "delete-transaction", "key": "R06-1"}:
+        raise AssertionError(f"가운데 행 삭제 후 포커스: {focus}")
+    delete_row(run, 2)
+    focus = active_element(run)
+    if focus["id"] != "transactions-heading":
+        raise AssertionError(f"마지막 행 삭제 후 포커스: {focus}")
+
+
+def t4_08_delete_all(run):
+    run.open_with_data(fixtures.case_data("C-09"))
+    delete_row(run, 2)
+    delete_row(run, 1)
+    delete_row(run, 0)
+    expect_rows(run, "transactions-body", 0)
+    expect_hidden(run, "#transactions-empty", False)
+    expect_hidden(run, "#transactions-table", True)
+    if run.page.evaluate("document.activeElement.id") != "transactions-heading":
+        raise AssertionError("모두 삭제한 뒤 포커스가 거래 내역 제목이 아니다")
+
+
+SCENARIOS["T4-08"] = [
+    ("C-09 a 매수 삭제 거부 VE-11", t4_08_reject),
+    ("취소하면 그대로, 확인하면 삭제와 저장", t4_08_dismiss_accept),
+    ("aria-label 과 삭제 후 포커스", t4_08_focus),
+    ("모두 삭제하면 빈 상태 문구", t4_08_delete_all),
 ]
 
 
