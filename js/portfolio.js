@@ -2,8 +2,18 @@
 // 다른 모듈을 import 하지 않고 브라우저 전역을 쓰지 않는다. 내부 계산은 반올림하지 않는다.
 
 export const ASSET_CLASSES = ["stock", "bond", "cash", "other"];
+export const ASSET_CLASS_LABELS = { stock: "주식", bond: "채권", cash: "현금", other: "기타" };
+export const TRANSACTION_TYPES = ["buy", "sell"];
 export const CASH_NAME = "현금";
 export const CASH_PRICE = 1;
+
+// 입력 숫자 해석(02 7.1). 범위 검사는 호출한 쪽이 한다.
+export function parseNumber(raw) {
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
+}
 
 // 처리 순서: date 오름차순, 같은 date 는 원래 배열 순서(안정 정렬). 03 3.1
 export function sortTransactions(transactions) {
