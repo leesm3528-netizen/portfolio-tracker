@@ -41,6 +41,106 @@ NON_NETWORK_SCHEMES = ("data", "blob", "about")
 SCENARIOS = {}
 
 
+# T3-01 index.html 영역 마크업 (docs/05_작업지시서.md T3-01 검증 방법)
+
+ELEMENT_IDS = (  # 02 9.1~9.8 의 id 전체
+    # 9.1 거래 입력
+    "transaction-section", "transaction-form", "tx-date", "tx-name", "tx-asset-class", "tx-type",
+    "tx-quantity", "tx-price", "tx-fee", "tx-fee-help", "tx-submit", "tx-message",
+    # 9.2 거래 내역
+    "transactions-section", "transactions-heading", "transactions-message", "transactions-table",
+    "transactions-body", "transactions-empty",
+    # 9.3 보유 현황
+    "holdings-section", "holdings-message", "holdings-table", "holdings-body", "holdings-empty",
+    # 9.4 자산 비중
+    "allocation-section", "allocation-table", "allocation-body", "allocation-total", "allocation-message",
+    # 9.5 리밸런싱 묶음과 목표 비중 입력
+    "rebalance-group", "targets-section", "targets-form", "target-stock", "target-bond", "target-cash",
+    "target-other", "targets-help", "target-sum", "targets-message",
+    # 9.6 리밸런싱 결과
+    "rebalance-section", "rebalance-table", "rebalance-body", "rebalance-message",
+    # 9.7 데이터 관리
+    "data-section", "export-button", "import-button", "import-file", "data-message",
+    # 9.8 하단 고지
+    "disclaimer",
+)
+
+STATIC_TEXTS = {  # 01 5.5 정적 문구
+    "#transactions-empty": "입력된 거래가 없습니다.",  # IN-01
+    "#holdings-empty": "보유 종목이 없습니다.",  # IN-02
+    "#tx-fee-help": "없으면 0",  # IN-05
+    "#targets-help": "합계가 100%일 때 리밸런싱을 계산합니다.",  # IN-06
+}
+IN_03 = "안내: 보유 중인 종목이 없어 자산 비중을 계산할 수 없습니다."
+
+
+def t3_01_ids(run):
+    run.open()
+    wrong = [f"{i}({n})" for i in ELEMENT_IDS if (n := run.page.locator("#" + i).count()) != 1]
+    if wrong:
+        raise AssertionError(f"id 개수가 1 이 아님: {', '.join(wrong)}")
+
+
+def t3_01_lang(run):
+    run.open()
+    lang = run.page.evaluate("document.documentElement.lang")
+    if lang != "ko":
+        raise AssertionError(f"html lang: 기대 'ko', 실제 {lang!r}")
+
+
+def t3_01_labels(run):
+    run.open()
+    missing = run.page.evaluate(
+        """() => [...document.querySelectorAll('input:not([type=hidden]):not([hidden]), select')]
+            .filter(el => el.labels.length === 0 && !el.getAttribute('aria-label'))
+            .map(el => el.id || el.outerHTML)"""
+    )
+    if missing:
+        raise AssertionError(f"label 없는 입력칸: {', '.join(missing)}")
+
+
+def t3_01_static_texts(run):
+    run.open()
+    for selector, expected in STATIC_TEXTS.items():
+        run.expect_text(selector, expected)
+    actual = run.page.locator("#allocation-message").text_content().strip()  # hidden 이므로 text_content
+    if actual != IN_03:
+        raise AssertionError(f"#allocation-message 텍스트: 기대 {IN_03!r}, 실제 {actual!r}")
+    if not run.page.locator("#allocation-message").is_hidden():
+        raise AssertionError("#allocation-message 가 hidden 이 아니다")
+    asset_class = run.page.input_value("#tx-asset-class")
+    if asset_class != "":
+        raise AssertionError(f"#tx-asset-class 값: 기대 '', 실제 {asset_class!r}")
+    fee = run.page.input_value("#tx-fee")
+    if fee != "":
+        raise AssertionError(f"#tx-fee 값: 기대 빈칸, 실제 {fee!r}")
+
+
+def t3_01_tables(run):
+    run.open()
+    problems = run.page.evaluate(
+        """() => [...document.querySelectorAll('table')].flatMap(t => {
+            const out = [];
+            if (!t.caption || !t.caption.textContent.trim()) out.push(t.id + ' caption 없음');
+            const heads = t.querySelectorAll('thead th');
+            if (heads.length === 0 || [...heads].some(th => th.getAttribute('scope') !== 'col'))
+                out.push(t.id + ' 열 머리 scope=col 아님');
+            return out;
+        })"""
+    )
+    if problems:
+        raise AssertionError("; ".join(problems))
+
+
+SCENARIOS["T3-01"] = [
+    ("02 9절 id 가 한 번씩 있다", t3_01_ids),
+    ("html lang 이 ko", t3_01_lang),
+    ("입력칸 label 연결", t3_01_labels),
+    ("표 caption 과 scope=col", t3_01_tables),
+    ("정적 문구와 입력칸 초기값", t3_01_static_texts),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>포트폴리오 트래커</title>
+</head>
+<body>
+  <header>
+    <h1>포트폴리오 트래커</h1>
+  </header>
+
+  <main>
+    <section id="transaction-section">
+      <h2>거래 입력</h2>
+      <form id="transaction-form" novalidate>
+        <div>
+          <label for="tx-date">날짜</label>
+          <input type="date" id="tx-date">
+        </div>
+        <div>
+          <label for="tx-name">종목명</label>
+          <input type="text" id="tx-name" placeholder="예: 삼성전자">
+        </div>
+        <div>
+          <label for="tx-asset-class">자산군</label>
+          <select id="tx-asset-class">
+            <option value="" selected>선택하세요</option>
+            <option value="stock">주식</option>
+            <option value="bond">채권</option>
+            <option value="cash">현금</option>
+            <option value="other">기타</option>
+          </select>
+        </div>
+        <div>
+          <label for="tx-type">구분</label>
+          <select id="tx-type">
+            <option value="buy" selected>매수</option>
+            <option value="sell">매도</option>
+          </select>
+        </div>
+        <div>
+          <label for="tx-quantity">수량</label>
+          <input type="number" id="tx-quantity" step="1" min="1" inputmode="numeric">
+        </div>
+        <div>
+          <label for="tx-price">가격(원)</label>
+          <input type="number" id="tx-price" step="any" inputmode="decimal">
+        </div>
+        <div>
+          <label for="tx-fee">수수료(원)</label>
+          <input type="number" id="tx-fee" step="any" min="0" inputmode="decimal" aria-describedby="tx-fee-help">
+          <p id="tx-fee-help">없으면 0</p>
+        </div>
+        <div>
+          <button type="submit" id="tx-submit">거래 추가</button>
+        </div>
+      </form>
+      <p id="tx-message" aria-live="polite"></p>
+    </section>
+
+    <section id="holdings-section">
+      <h2>보유 현황</h2>
+      <p id="holdings-message" aria-live="polite"></p>
+      <div class="table-wrap">
+        <table id="holdings-table" hidden>
+          <caption class="visually-hidden">보유 현황</caption>
+          <thead>
+            <tr>
+              <th scope="col">종목명</th>
+              <th scope="col">자산군</th>
+              <th scope="col" class="num">보유수량</th>
+              <th scope="col" class="num">평균단가(원)</th>
+              <th scope="col" class="num">현재가(원)</th>
+              <th scope="col" class="num">평가금액(원)</th>
+              <th scope="col" class="num">평가손익(원)</th>
+              <th scope="col" class="num">수익률(%)</th>
+              <th scope="col" class="num">실현손익(원)</th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body"></tbody>
+        </table>
+      </div>
+      <p id="holdings-empty">보유 종목이 없습니다.</p>
+    </section>
+
+    <section id="allocation-section">
+      <h2>자산 비중</h2>
+      <p id="allocation-message" hidden>안내: 보유 중인 종목이 없어 자산 비중을 계산할 수 없습니다.</p>
+      <div class="table-wrap">
+        <table id="allocation-table">
+          <caption>자산군별 비중</caption>
+          <thead>
+            <tr>
+              <th scope="col">자산군</th>
+              <th scope="col" class="num">평가금액(원)</th>
+              <th scope="col" class="num">비중(%)</th>
+            </tr>
+          </thead>
+          <tbody id="allocation-body"></tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">합계</th>
+              <td id="allocation-total" class="num"></td>
+              <td class="num"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section id="rebalance-group">
+      <h2>리밸런싱</h2>
+      <section id="targets-section">
+        <h3>목표 비중</h3>
+        <form id="targets-form" novalidate>
+          <div>
+            <label for="target-stock">주식 목표 비중(%)</label>
+            <input type="number" id="target-stock" step="0.1" min="0" max="100" inputmode="decimal" aria-describedby="targets-help">
+          </div>
+          <div>
+            <label for="target-bond">채권 목표 비중(%)</label>
+            <input type="number" id="target-bond" step="0.1" min="0" max="100" inputmode="decimal" aria-describedby="targets-help">
+          </div>
+          <div>
+            <label for="target-cash">현금 목표 비중(%)</label>
+            <input type="number" id="target-cash" step="0.1" min="0" max="100" inputmode="decimal" aria-describedby="targets-help">
+          </div>
+          <div>
+            <label for="target-other">기타 목표 비중(%)</label>
+            <input type="number" id="target-other" step="0.1" min="0" max="100" inputmode="decimal" aria-describedby="targets-help">
+          </div>
+        </form>
+        <p id="targets-help">합계가 100%일 때 리밸런싱을 계산합니다.</p>
+        <p>목표 비중 합계 <output id="target-sum" for="target-stock target-bond target-cash target-other"></output></p>
+        <p id="targets-message" aria-live="polite"></p>
+      </section>
+      <section id="rebalance-section">
+        <h3>리밸런싱 결과</h3>
+        <p id="rebalance-message" aria-live="polite" hidden></p>
+        <div class="table-wrap">
+          <table id="rebalance-table">
+            <caption class="visually-hidden">리밸런싱 결과</caption>
+            <thead>
+              <tr>
+                <th scope="col">자산군</th>
+                <th scope="col" class="num">현재 평가금액(원)</th>
+                <th scope="col" class="num">목표 비중(%)</th>
+                <th scope="col" class="num">목표 금액(원)</th>
+                <th scope="col" class="num">리밸런싱 금액(원)</th>
+                <th scope="col">구분</th>
+              </tr>
+            </thead>
+            <tbody id="rebalance-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="transactions-section">
+      <h2 id="transactions-heading" tabindex="-1">거래 내역</h2>
+      <p id="transactions-message" aria-live="polite"></p>
+      <div class="table-wrap">
+        <table id="transactions-table" hidden>
+          <caption class="visually-hidden">거래 내역</caption>
+          <thead>
+            <tr>
+              <th scope="col">날짜</th>
+              <th scope="col">종목명</th>
+              <th scope="col">자산군</th>
+              <th scope="col">구분</th>
+              <th scope="col" class="num">수량</th>
+              <th scope="col" class="num">가격(원)</th>
+              <th scope="col" class="num">수수료(원)</th>
+              <th scope="col">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="transactions-body"></tbody>
+        </table>
+      </div>
+      <p id="transactions-empty">입력된 거래가 없습니다.</p>
+    </section>
+
+    <section id="data-section">
+      <h2>데이터 관리</h2>
+      <div>
+        <button type="button" id="export-button">JSON 내보내기</button>
+        <button type="button" id="import-button">JSON 불러오기</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+      <p id="data-message" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <footer id="disclaimer">계산 결과는 참고용이며 투자 판단의 책임은 본인에게 있습니다.</footer>
+</body>
+</html>
