@@ -2,10 +2,11 @@
 
 ## 현재 단계
 
-4단계(MVP 구현) 진행 중, 다음 T4-13. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-01~T4-12 를 마쳤다. verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
+4단계(MVP 구현) 진행 중, 다음 T4-14. 사용자가 2026-10-21 4단계 진행을 승인했다. T4-01~T4-13 을 마쳤다. verify.mjs 는 옵션 없이 종료 코드 0 이어야 한다. 승인 대기 상태가 아니다(4단계 마지막 작업 T4-17 을 마치면 승인을 받는다).
 
 ## 완료한 작업
 
+- T4-13 리밸런싱 결과 표: js/main.js `buildView` 에 `calcRebalance(classValues, targets)` 를, js/ui.js 에 리밸런싱 렌더(자산군 th scope=row, 현재 평가금액, 목표 비중, 목표 금액, 부호 없는 `tradeAmount`, 구분 매수/매도/유지, 색 클래스 없음. 실패면 표를 숨기고 `#rebalance-message` 에 "안내: " VE-15/VE-16)와 메시지 줄 내부 함수 `writeMessageLine`, `clearMessageLine`(showMessage, clearMessage 와 같이 씀)을 추가했다. 목표 비중 칸의 표시 자릿수가 정해져 있지 않아 M-35 를 추가하고 권장안(소수 첫째 자리 고정, `formatTargetSum` 을 같이 씀)으로 해소해 03 13.2, 02 10절, 04 8.2 에 반영했다. verify_ui.py 에 T4-13 시나리오 8개(R-01, R-02 a, R-02 b, R-03, R-04, R-05, R-06, 목표 비중 변경 즉시 반영과 빈 상태)를 추가했다. 전체 통과 52 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4, T4-09 9, T4-10 5, T4-11 4, T4-12 5, T4-13 8). `verify.mjs` 옵션 없이 통과 442 / 실패 0 / 건너뜀 0, 종료 코드 0. docs 목차와 본문 제목 일치, 이모지 검사 0 건.
 - T4-12 목표 비중 입력: js/rebalance.js 에 `parseTargetInput`(빈칸, 숫자 아님은 VE-13, 범위와 자릿수는 T4-06 내부 `targetValueError` 를 같이 씀)을, js/ui.js 에 `setTargetInputs`, `#target-*` input 이벤트 연결(`numberInputValue` 로 읽음), 내부 `formatTargetSum` 과 `#target-sum` 표시(뒤에 "%"), `SLOTS` 의 {합계}를, js/main.js 에 `init` 의 `setTargetInputs`, `buildView` 의 `targetSum`(`sumTargets`), `handlers.onTargetInput`(실패는 `targets` 영역, 성공 시 `commit`)을 추가했다. `renderApp` 은 목표 비중 입력칸 값을 바꾸지 않는다. verify_ui.py 에 T4-12 시나리오 5개(처음 0 과 0.0%, 60 입력과 새로고침, 합계 100.0%, VE-14/VE-13 과 저장값 유지, 한 글자씩 입력)를 추가했다. 전체 통과 44 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4, T4-09 9, T4-10 5, T4-11 4, T4-12 5). `verify.mjs` 통과 442 / 실패 0 / 건너뜀 0. 2.5 점검(계산 모듈 DOM 0 건, import 는 02 3절 표와 같음).
 - T4-11 자산 비중 표: js/main.js `buildView` 에 `sumValueByAssetClass` -> `buildAllocation` 을, js/ui.js 에 자산 비중 렌더(4개 자산군 th scope=row, `#allocation-total`, 총평가금액 0 이면 비중 "-" 와 `#allocation-message` 표시, 색 클래스 없음)와 내부 `formatPercent` 를 추가했다. verify_ui.py 에 T4-11 시나리오 4개(R-01, R-04, R-05, 빈 상태 후 거래 추가)를 추가하고, T3-01 정적 문구 시나리오에서 `#allocation-message` 의 hidden 확인을 뺐다(02 9.4 에 따라 데이터 0 건이면 보이므로 T4-11 이 확인). 전체 통과 39 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4, T4-09 9, T4-10 5, T4-11 4). `verify.mjs` 통과 442 / 실패 0 / 건너뜀 0. R-06 데이터로 1280px, 360px 스크린샷(저장소 밖 임시 폴더 Temp/claude/pt-scratch/screens 의 t4-11-desktop.png, t4-11-mobile.png)을 점검해 표 안 현재가 입력칸 치수, tbody 칸 줄바꿈(360px 날짜 끊김), 행 머리 굵기를 고쳤고 M-34 로 04 10.1, 10.5 에 반영했다. 2.5 점검(계산 모듈 DOM 0 건, import 는 02 3절 표와 같음)과 금지 속성 grep 0 건, 정의 안 된 CSS 변수 0 건.
 - T4-10 현재가 입력: js/portfolio.js 에 `updatePrice` 를, js/ui.js 에 현재가 입력칸(02 9.3 형식, aria-label "{종목명} 현재가", inputmode decimal, 현금 행과 보유수량 0 행 제외), `#holdings-body` change 위임, `renderApp` 의 렌더 뒤 포커스 복원(`data-action`, `data-name`/`data-id`)을, js/main.js 에 `handlers.onPriceChange`(실패 VE-12 는 `holdings` 영역, 성공 시 `commit`)를 추가했다. Tab 의 change 가 포커스 이동 전에 와서 포커스가 사라지는 문제를 M-33 으로 추가하고 권장안(change 처리를 setTimeout 으로 미룸)으로 해소해 02 7.5 에 반영했다. verify_ui.py 에 T4-10 시나리오 5개를 추가하고 T4-09 의 현재가 칸 기대값을 입력칸 값으로 고쳤다. 전체 통과 35 / 실패 0(T3-01 5, T3-02 4, T4-07 8, T4-08 4, T4-09 9, T4-10 5). `verify.mjs` 옵션 없이 통과 442 / 실패 0 / 건너뜀 0, 종료 코드 0. Enter 로도 반영되고 포커스가 그 칸에 남는 것을 따로 확인했다.
@@ -36,7 +37,7 @@
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T4-13 리밸런싱 결과 표
+1. T4-14 JSON 내보내기
 
 ## 알려진 문제
 
@@ -47,7 +48,7 @@
 ## 다음 작업자에게 주의사항
 
 1. 이전 작업의 대화 기록은 볼 수 없다. 이 파일, AGENTS.md, docs/, skills/ 만이 근거다. 사용자와 새로 정한 내용은 반드시 원본 문서에 적는다.
-2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-35 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-34 는 권장안대로 해소되었다.
+2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-36 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-35 는 권장안대로 해소되었다.
 3. 화면 메시지 문구의 원본은 docs/01_요구사항.md 5절 하나다. 계산과 검증 모듈은 문장을 만들지 않고 `{ code, params }` 만 반환한다(docs/02_설계문서.md 4.1, 11절).
 4. index.html 은 데이터 0 건 상태의 정적 뼈대이고(05 3.1 M-29) ui.js 가 렌더 때 hidden 을 바꾼다. JS 가 붙이는 클래스 스타일은 그 클래스를 처음 쓰는 작업에서 css/style.css 에 추가한다(M-30). 화면 작업은 verify_ui.py 에 작업 ID 로 시나리오를 추가하고 이전 시나리오와 함께 실행한다. 메시지 문장은 ui.js 의 `MESSAGES` 와 치환 자리 표 `SLOTS` 로 만든다. VE-15 의 {합계} 자리는 T4-12 에서 `SLOTS` 에 추가했다. 숫자 입력칸 값은 ui.js 내부 `numberInputValue` 로 읽는다(M-32). 현재가 change 처리는 setTimeout 으로 미루므로(M-33) 화면 검증에서 현재가를 바꾼 뒤에는 verify_ui.py 의 `settle(run)` 으로 기다린다.
 5. 결정 항목은 "03 D-01" 처럼 문서 번호를 붙여 부른다. 문서마다 D 번호가 따로 매겨져 있다.

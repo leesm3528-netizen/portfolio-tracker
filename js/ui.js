@@ -90,6 +90,9 @@ const formatTargetSum = numberFormat({ minimumFractionDigits: 1, maximumFraction
 // 현재가 미입력 표시(01 FR-05 기준 3, 02 9.3)
 const PRICE_MISSING = "현재가 미입력";
 
+// 리밸런싱 구분 칸(01 FR-09 기준 2, 3). 매수와 매도는 거래 구분 표시 이름과 같다.
+const REBALANCE_ACTION_LABELS = { ...TRANSACTION_TYPE_LABELS, hold: "유지" };
+
 // 치환 자리 -> params 값의 표시(02 11절)
 const SLOTS = {
   "날짜": (p) => p.date,
@@ -286,6 +289,24 @@ function renderAllocation(allocation) {
   byId("allocation-message").hidden = allocation.totalValue !== 0;
 }
 
+// 리밸런싱 결과(02 9.6). 실패(VE-15, VE-16)면 표를 숨기고 안내로 보인다. 금액은 부호 없는 tradeAmount 이고
+// 이 표에는 색 클래스를 쓰지 않는다(04 8.5, 9.2). 목표 비중은 소수 첫째 자리 고정이다(05 3.1 M-35).
+function renderRebalance(rebalance) {
+  const rows = rebalance.ok ? rebalance.value.rows.map((row) => {
+    const tr = document.createElement("tr");
+    tr.append(rowHeader(ASSET_CLASS_LABELS[row.assetClass]), cell("td", formatWon(row.currentValue), "num"),
+      cell("td", formatTargetSum(row.targetWeight), "num"), cell("td", formatWon(row.targetValue), "num"),
+      cell("td", formatWon(row.tradeAmount), "num"), cell("td", REBALANCE_ACTION_LABELS[row.action]));
+    return tr;
+  }) : [];
+  byId("rebalance-body").replaceChildren(...rows);
+  byId("rebalance-table").hidden = !rebalance.ok;
+  const message = byId("rebalance-message");
+  if (rebalance.ok) clearMessageLine(message);
+  else writeMessageLine(message, rebalance.error, "info");
+  message.hidden = rebalance.ok;
+}
+
 // 포커스가 표 안 요소에 있으면 그 data-action 과 data-name(거래 행은 data-id)을 기억한다(02 7.5).
 function focusedControl() {
   const el = document.activeElement;
@@ -306,6 +327,7 @@ export function renderApp(view) {
   renderHoldings(view.holdings);
   renderAllocation(view.allocation);
   byId("target-sum").textContent = formatTargetSum(view.targetSum) + "%";
+  renderRebalance(view.rebalance);
   restoreFocus(saved);
 }
 
@@ -315,10 +337,19 @@ export function resetTransactionForm() {
   byId("tx-date").focus();
 }
 
-export function showMessage(area, message, kind) {
-  const el = byId(MESSAGE_AREAS[area]);
+// 메시지 줄에 머리말을 붙인 문장과 상태 클래스를 넣는다(02 4.3, 04 10.8, 10.9).
+function writeMessageLine(el, message, kind) {
   el.textContent = PREFIXES[kind] + messageText(message);
   el.className = MESSAGE_CLASSES[kind];
+}
+
+function clearMessageLine(el) {
+  el.textContent = "";
+  el.removeAttribute("class");
+}
+
+export function showMessage(area, message, kind) {
+  writeMessageLine(byId(MESSAGE_AREAS[area]), message, kind);
 }
 
 // 머리말 없는 확인 문구(C-01, C-02)로 확인 창을 띄운다(02 4.3).
@@ -327,7 +358,5 @@ export function confirmAction(message) {
 }
 
 export function clearMessage(area) {
-  const el = byId(MESSAGE_AREAS[area]);
-  el.textContent = "";
-  el.removeAttribute("class");
+  clearMessageLine(byId(MESSAGE_AREAS[area]));
 }

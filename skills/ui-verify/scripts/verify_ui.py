@@ -856,6 +856,126 @@ SCENARIOS["T4-12"] = [
 ]
 
 
+# T4-13 리밸런싱 결과 표 (docs/05_작업지시서.md T4-13 검증 방법)
+# 기대값은 03 14.16~14.21 의 판정과 표시 금액이다. 칸 순서는 02 9.6, 목표 비중은 소수 첫째 자리 고정(05 3.1 M-35).
+
+INFO = "안내: "
+VE_16 = "보유 중인 종목이 없어 리밸런싱을 계산할 수 없습니다."
+
+
+def ve_15(total):
+    return f"목표 비중 합계가 {total}%입니다. 합계가 100%일 때 리밸런싱을 계산합니다."
+
+
+def expect_rebalance_rows(run, rows):
+    actual = row_texts(run, "rebalance-body")
+    if actual != rows:
+        raise AssertionError(f"#rebalance-body: 기대 {rows}, 실제 {actual}")
+    expect_hidden(run, "#rebalance-table", False)
+    expect_hidden(run, "#rebalance-message", True)
+    run.expect_text("#rebalance-message", "")
+    colored = run.page.locator("#rebalance-table .value-up, #rebalance-table .value-down").count()
+    if colored:
+        raise AssertionError(f"리밸런싱 표에 수익/손실 색 클래스 {colored} 개")
+    scopes = run.page.evaluate(
+        "() => [...document.getElementById('rebalance-body').rows].map(tr => tr.cells[0].tagName + tr.cells[0].scope)"
+    )
+    if scopes != ["THrow"] * 4:
+        raise AssertionError(f"자산군 칸이 th scope=row 가 아니다: {scopes}")
+
+
+def expect_rebalance_info(run, message):
+    expect_hidden(run, "#rebalance-table", True)
+    expect_hidden(run, "#rebalance-message", False)
+    run.expect_text("#rebalance-message", INFO + message)
+    cls = run.page.locator("#rebalance-message").get_attribute("class")
+    if cls != "message-info":
+        raise AssertionError(f"#rebalance-message class: 기대 'message-info', 실제 {cls!r}")
+    expect_rows(run, "rebalance-body", 0)
+
+
+R01_REBALANCE = [
+    ["주식", "7,000,000", "60.0", "6,000,000", "1,000,000", "매도"],
+    ["채권", "2,000,000", "30.0", "3,000,000", "1,000,000", "매수"],
+    ["현금", "1,000,000", "10.0", "1,000,000", "0", "유지"],
+    ["기타", "0", "0.0", "0", "0", "유지"],
+]
+
+
+def t4_13_r01(run):
+    run.open_with_data(fixtures.case_data("R-01"))
+    expect_rebalance_rows(run, R01_REBALANCE)
+
+
+def t4_13_r02(run):
+    run.open_with_data(fixtures.case_data("R-02", "a"))
+    expect_rebalance_info(run, ve_15("95.0"))
+
+
+def t4_13_r02_b(run):
+    run.open_with_data(fixtures.case_data("R-02", "b"))
+    expect_rebalance_info(run, ve_15("100.1"))
+
+
+def t4_13_r03(run):
+    run.open_with_data(fixtures.case_data("R-03"))
+    expect_rebalance_rows(run, [
+        ["주식", "7,000,000", "0.1", "10,000", "6,990,000", "매도"],
+        ["채권", "2,000,000", "0.2", "20,000", "1,980,000", "매도"],
+        ["현금", "1,000,000", "84.1", "8,410,000", "7,410,000", "매수"],
+        ["기타", "0", "15.6", "1,560,000", "1,560,000", "매수"],
+    ])
+
+
+def t4_13_r04(run):
+    run.open_with_data(fixtures.case_data("R-04"))
+    expect_rebalance_rows(run, [
+        ["주식", "3,330,000", "33.3", "3,330,000", "0", "유지"],
+        ["채권", "3,330,000", "33.3", "3,330,000", "0", "유지"],
+        ["현금", "3,340,001", "33.4", "3,340,000", "1", "매도"],
+        ["기타", "0", "0.0", "0", "0", "유지"],
+    ])
+
+
+def t4_13_r05(run):
+    run.open_with_data(fixtures.case_data("R-05"))
+    expect_rebalance_info(run, VE_16)
+
+
+def t4_13_r06(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    expect_rebalance_rows(run, [
+        ["주식", "550,000", "50.0", "500,000", "50,000", "매도"],
+        ["채권", "300,000", "35.5", "355,000", "55,000", "매수"],
+        ["현금", "100,000", "10.0", "100,000", "0", "유지"],
+        ["기타", "50,000", "4.5", "45,000", "5,000", "매도"],
+    ])
+
+
+def t4_13_live(run):
+    run.open_with_data(fixtures.case_data("R-01"))
+    run.page.fill("#target-cash", "5")
+    expect_rebalance_info(run, ve_15("95.0"))
+    run.page.fill("#target-cash", "10")
+    expect_rebalance_rows(run, R01_REBALANCE)
+    # 빈 상태에서는 VE-16
+    run.page.evaluate(f"localStorage.removeItem({json.dumps(fixtures.STORAGE_KEY)})")
+    run.page.goto(run.url("?empty"))
+    expect_rebalance_info(run, VE_16)
+
+
+SCENARIOS["T4-13"] = [
+    ("R-01 주식 매도, 채권 매수, 현금과 기타 유지", t4_13_r01),
+    ("R-02 a 합계 95.0 이면 VE-15 안내", t4_13_r02),
+    ("R-02 b 합계 100.1 이면 VE-15 안내", t4_13_r02_b),
+    ("R-03 부동소수 합계 판정과 금액", t4_13_r03),
+    ("R-04 표시 0 원 유지와 매도 1", t4_13_r04),
+    ("R-05 총평가금액 0 이면 VE-16 안내", t4_13_r05),
+    ("R-06 4개 자산군 금액과 판정", t4_13_r06),
+    ("목표 비중 변경 즉시 반영과 빈 상태 VE-16", t4_13_live),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------
