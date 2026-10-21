@@ -55,6 +55,11 @@ function validateData(value) {
   return { ok: true, value: { version: DATA_VERSION, transactions, prices: prunePrices(prices, transactions), targets } };
 }
 
+// 내보내기 파일 내용(02 5.6). 저장 객체와 같은 형식이고 들여쓰기 2칸이다.
+export function serializeData(data) {
+  return JSON.stringify(data, null, 2);
+}
+
 export function parseData(text) {
   let value;
   try {

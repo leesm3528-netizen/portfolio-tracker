@@ -1,8 +1,8 @@
 // 상태 보유와 흐름 조율: 검증 -> 상태 교체 -> 저장 -> 재계산 -> 렌더(docs/02_설계문서.md 7.6, 8절).
 // DOM 과 localStorage 에 직접 접근하지 않고, 화면 문장을 만들지 않는다.
 
-import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, setTargetInputs, showMessage } from "./ui.js";
-import { createEmptyData, loadData, saveData } from "./storage.js";
+import { bindEvents, clearMessage, confirmAction, downloadJson, renderApp, resetTransactionForm, setTargetInputs, showMessage } from "./ui.js";
+import { createEmptyData, loadData, saveData, serializeData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
 import { buildAllocation, buildHoldings, calcPositions, prunePrices, sortTransactions, sumValueByAssetClass, updatePrice } from "./portfolio.js";
 import { calcRebalance, parseTargetInput, sumTargets } from "./rebalance.js";
@@ -87,6 +87,10 @@ const handlers = {
     }
     clearMessage("targets");
     commit({ ...state, targets: { ...state.targets, [assetClass]: result.value } });
+  },
+
+  onExport() {
+    downloadJson(serializeData(state));
   },
 };
 

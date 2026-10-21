@@ -194,6 +194,7 @@ export function bindEvents(handlers) {
     const raw = numberInputValue(input);
     setTimeout(() => handlers.onPriceChange(name, raw));
   });
+  byId("export-button").addEventListener("click", () => handlers.onExport());
   // 목표 비중은 입력할 때마다(input) 반영한다. 입력칸 값은 다시 쓰지 않는다(02 8절, 7.5).
   for (const assetClass of ASSET_CLASSES) {
     const input = targetInput(assetClass);
@@ -350,6 +351,19 @@ function clearMessageLine(el) {
 
 export function showMessage(area, message, kind) {
   writeMessageLine(byId(MESSAGE_AREAS[area]), message, kind);
+}
+
+// 내보내기 파일을 브라우저 안에서 만들어 내려받게 한다. 서버 요청이 없다(02 5.6, 01 FR-11).
+export function downloadJson(text) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `portfolio-tracker-${todayString()}.json`;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url)); // 내려받기가 시작된 뒤 해제한다
 }
 
 // 머리말 없는 확인 문구(C-01, C-02)로 확인 창을 띄운다(02 4.3).

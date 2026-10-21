@@ -976,6 +976,68 @@ SCENARIOS["T4-13"] = [
 ]
 
 
+# T4-14 JSON 내보내기 (docs/05_작업지시서.md T4-14 검증 방법)
+
+EMPTY_DATA = {"version": 1, "transactions": [], "prices": {}, "targets": {"stock": 0, "bond": 0, "cash": 0, "other": 0}}
+
+
+def today(run):
+    return run.page.evaluate(
+        "(() => { const d = new Date(); const p = n => String(n).padStart(2, '0');"
+        " return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })()"
+    )
+
+
+def export_file(run):
+    """JSON 내보내기를 눌러 받은 파일의 (이름, 내용 텍스트)를 반환한다."""
+    with run.page.expect_download() as info:
+        run.page.click("#export-button")
+    path = run.save_download(info.value)
+    return info.value.suggested_filename, path.read_text(encoding="utf-8")
+
+
+def expect_export(run, expected_data):
+    name, text = export_file(run)
+    expected_name = f"portfolio-tracker-{today(run)}.json"
+    if name != expected_name:
+        raise AssertionError(f"파일 이름: 기대 {expected_name}, 실제 {name}")
+    content = json.loads(text)
+    if content != expected_data:
+        raise AssertionError(f"파일 내용: 기대 {expected_data}, 실제 {content}")
+    if list(content) != ["version", "transactions", "prices", "targets"]:
+        raise AssertionError(f"파일 키 순서: {list(content)}")
+    if not text.startswith('{\n  "version": 1,'):
+        raise AssertionError(f"들여쓰기 2칸이 아니다: {text[:30]!r}")
+
+
+def t4_14_r06(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    expect_export(run, stored_data(run))
+    # 변경 직후에도 같은 시점 localStorage 값과 같다
+    enter_price(run, "종목O", "10500")
+    expect_export(run, stored_data(run))
+
+
+def t4_14_empty(run):
+    run.open()
+    # 처음 연 빈 상태는 저장 키가 없다(02 7.4 loadData). 내용은 02 5.5 빈 데이터다.
+    if stored_data(run) is not None:
+        raise AssertionError("처음 연 빈 상태에 저장 키가 있다")
+    expect_export(run, EMPTY_DATA)
+    # 거래를 넣었다가 모두 지운 빈 상태는 저장값과 같다
+    add_transaction(run, **C01_FIRST)
+    delete_row(run, 0)
+    expect_export(run, stored_data(run))
+    if stored_data(run) != EMPTY_DATA:
+        raise AssertionError(f"모두 삭제한 뒤 저장 객체: {stored_data(run)}")
+
+
+SCENARIOS["T4-14"] = [
+    ("R-06 내보내기 파일 이름과 내용", t4_14_r06),
+    ("거래 0건 내보내기", t4_14_empty),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------
