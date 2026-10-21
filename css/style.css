@@ -64,6 +64,7 @@
   --layout-gutter-wide: 24px;
   --control-height: 40px;
   --control-height-sm: 32px;
+  --control-width-sm: 112px;
 }
 
 /* 기본 */
@@ -324,10 +325,10 @@ tbody th {
   font-weight: var(--font-weight-regular);
 }
 
-/* 10.5 표 안 입력칸(현재가). 표 안 버튼과 같은 높이와 글자, 너비는 내용 기준 */
+/* 10.5 표 안 입력칸(현재가). 표 안 버튼과 같은 높이와 글자, 너비는 --control-width-sm */
 
 td input {
-  width: auto;
+  width: var(--control-width-sm);
   height: var(--control-height-sm);
   font-size: var(--font-size-sm);
 }

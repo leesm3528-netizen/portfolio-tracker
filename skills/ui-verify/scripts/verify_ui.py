@@ -1190,6 +1190,176 @@ SCENARIOS["T4-15"] = [
 ]
 
 
+# T4-16 반응형, 접근성, 고지 점검 (docs/05_작업지시서.md T4-16 검증 방법)
+
+FORBIDDEN = re.compile(  # 04 3절 금지 요소(그라데이션, 글래스모피즘, 알약 반경, 그림자, 애니메이션, 웹 글꼴)
+    r"gradient|box-shadow|backdrop-filter|border-radius: *(999|50%)|transition|animation|@import|@font-face|fonts\.googleapis"
+)
+NON_TEXT = re.compile("[^\x00-\x7F가-힣ㄱ-ㆎ]")  # 이모지와 장식 기호(05 2.4)
+
+
+def t4_16_widths(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    for width in WIDTHS:
+        run.page.set_viewport_size({"width": width, "height": 800})
+        if not run.page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"):
+            raise AssertionError(f"{width}px: 페이지 가로 스크롤")
+        if not run.page.locator("#disclaimer").is_visible():
+            raise AssertionError(f"{width}px: #disclaimer 가 보이지 않는다")
+        # 넓은 표는 .table-wrap 안에서만 스크롤한다(04 10.1)
+        bad = run.page.evaluate(
+            """() => [...document.querySelectorAll('table')].filter(t => !t.hidden)
+                .filter(t => !t.parentElement.classList.contains('table-wrap')
+                    || getComputedStyle(t.parentElement).overflowX !== 'auto').map(t => t.id)"""
+        )
+        if bad:
+            raise AssertionError(f"{width}px: .table-wrap(overflow-x auto) 밖의 표 {bad}")
+    run.page.set_viewport_size({"width": 1024, "height": 800})
+    tops = run.page.evaluate(
+        "() => ['allocation-section', 'rebalance-group'].map(id => document.getElementById(id).getBoundingClientRect().top)"
+    )
+    if tops[0] != tops[1]:
+        raise AssertionError(f"1024px: 자산 비중과 리밸런싱이 두 열이 아니다 {tops}")
+    run.page.set_viewport_size({"width": 360, "height": 800})
+    boxes = run.page.evaluate(
+        """() => ['export-button', 'import-button'].map(id => {
+            const r = document.getElementById(id).getBoundingClientRect(); return [r.top, r.width]; })"""
+    )
+    section = run.page.evaluate("document.getElementById('data-section').getBoundingClientRect().width")
+    if not boxes[1][0] > boxes[0][0] or min(boxes[0][1], boxes[1][1]) < section / 2:
+        raise AssertionError(f"360px: 데이터 관리 버튼이 세로로 쌓인 전체 너비가 아니다 {boxes}")
+
+
+def focus_key(run):
+    return run.page.evaluate(
+        """() => { const el = document.activeElement;
+            return el.id || (el.dataset.action ? el.dataset.action + ':' + (el.dataset.name || el.dataset.id) : el.tagName); }"""
+    )
+
+
+def t4_16_tab_order(run):
+    run.page.set_viewport_size({"width": 1280, "height": 800})
+    run.open_with_data(fixtures.case_data("R-06"))
+    positive = run.page.evaluate("() => [...document.querySelectorAll('[tabindex]')].filter(el => el.tabIndex > 0).length")
+    if positive:
+        raise AssertionError(f"양수 tabindex {positive} 개")
+    run.page.focus("#tx-date")
+    order = ["tx-date"]
+    for _ in range(80):  # 날짜 입력칸은 연, 월, 일 칸에서 Tab 이 여러 번 머문다
+        run.page.keyboard.press("Tab")
+        key = focus_key(run)
+        if key != order[-1]:
+            order.append(key)
+        if key == "import-button":
+            break
+    expected = ["tx-date", "tx-name", "tx-asset-class", "tx-type", "tx-quantity", "tx-price", "tx-fee", "tx-submit",
+                "set-price:종목N", "set-price:종목O", "set-price:종목P",
+                "target-stock", "target-bond", "target-cash", "target-other",
+                "delete-transaction:R06-0", "delete-transaction:R06-1", "delete-transaction:R06-2",
+                "delete-transaction:R06-3", "export-button", "import-button"]
+    if order != expected:
+        raise AssertionError(f"Tab 순서: 기대 {expected}, 실제 {order}")
+
+
+def t4_16_keyboard(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    kb = run.page.keyboard
+    # 거래 추가: Tab 으로 옮겨 가며 입력하고 수수료 칸에서 Enter 로 제출한다(날짜는 처음 값 오늘)
+    run.page.focus("#tx-name")
+    kb.type("종목Q")
+    kb.press("Tab")
+    kb.press("ArrowDown")  # 자산군: 선택하세요 -> 주식
+    kb.press("Tab")
+    kb.press("Tab")
+    kb.type("3")
+    kb.press("Tab")
+    kb.type("2000")
+    kb.press("Tab")
+    kb.press("Enter")
+    expect_rows(run, "transactions-body", 5)
+    if run.page.evaluate("document.activeElement.id") != "tx-date":
+        raise AssertionError("거래 추가 뒤 포커스가 날짜 입력칸이 아니다")
+    # 현재가 입력: Enter 로 반영
+    price_input(run, "종목Q").focus()
+    kb.type("2100")
+    kb.press("Enter")
+    settle(run)
+    if stored_prices(run).get("종목Q") != 2100:
+        raise AssertionError(f"키보드 현재가 입력: {stored_prices(run)}")
+    # 목표 비중 입력
+    run.page.focus("#target-other")
+    kb.press("Control+A")
+    kb.type("5")
+    if stored_targets(run)["other"] != 5:
+        raise AssertionError(f"키보드 목표 비중 입력: {stored_targets(run)}")
+    # 삭제: 마지막 거래(종목Q)의 삭제 버튼에서 Enter, 확인 accept
+    run.page.locator(DELETE_BUTTON_SELECTOR).nth(4).focus()
+    kb.press("Enter")
+    run.expect_dialog(f"{today(run)} 종목Q 매수 3 거래를 삭제하시겠습니까?")
+    expect_rows(run, "transactions-body", 4)
+    if run.page.evaluate("document.activeElement.id") != "transactions-heading":
+        raise AssertionError("마지막 행 삭제 뒤 포커스가 거래 내역 제목이 아니다")
+    # 내보내기와 불러오기 버튼
+    run.page.focus("#export-button")
+    with run.page.expect_download() as info:
+        kb.press("Enter")
+    if not info.value.suggested_filename.startswith("portfolio-tracker-"):
+        raise AssertionError(f"키보드 내보내기 파일 이름: {info.value.suggested_filename}")
+    run.page.focus("#import-button")
+    with run.page.expect_file_chooser() as chooser:
+        kb.press("Enter")
+    chooser.value.set_files(str(write_file(run, "r06.json", fixtures.case_data("R-06"))))
+    wait_until(run, lambda: run.text("#data-message") != "", "#data-message")
+    run.expect_text("#data-message", INFO + IN_04)
+    expect_rows(run, "transactions-body", 4)
+
+
+def t4_16_aria(run):
+    run.open_with_data(fixtures.case_data("R-06"))
+    problems = run.page.evaluate(
+        """() => {
+            const out = [];
+            for (const id of ['tx-message', 'transactions-message', 'holdings-message', 'targets-message', 'data-message', 'rebalance-message'])
+                if (document.getElementById(id).getAttribute('aria-live') !== 'polite') out.push(id + ' aria-live');
+            for (const id of ['tx-fee', 'target-stock', 'target-bond', 'target-cash', 'target-other']) {
+                const help = id === 'tx-fee' ? 'tx-fee-help' : 'targets-help';
+                if (document.getElementById(id).getAttribute('aria-describedby') !== help) out.push(id + ' aria-describedby');
+            }
+            for (const t of document.querySelectorAll('table')) {
+                if (!t.caption || !t.caption.textContent.trim()) out.push(t.id + ' caption');
+                for (const tr of t.querySelectorAll('tbody tr, tfoot tr'))
+                    if (tr.cells[0].tagName !== 'TH' || tr.cells[0].scope !== 'row') out.push(t.id + ' 행 머리');
+            }
+            return out;
+        }"""
+    )
+    if problems:
+        raise AssertionError("; ".join(problems))
+
+
+def t4_16_forbidden(run):
+    run.open()
+    found = []
+    for rel in ("css/style.css", "index.html", "js/ui.js"):
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        for number, line in enumerate(text.splitlines(), 1):
+            if FORBIDDEN.search(line) or NON_TEXT.search(line):
+                found.append(f"{rel}:{number}")
+    if found:
+        raise AssertionError(f"04 3절 금지 요소: {', '.join(found)}")
+    if run.page.locator("script[src^='http'], link[href^='http']").count():
+        raise AssertionError("외부 스크립트나 글꼴 link 가 있다")
+
+
+SCENARIOS["T4-16"] = [
+    ("세 너비 가로 스크롤 없음, 고지 보임, 두 열과 세로 버튼", t4_16_widths),
+    ("R-06 Tab 순서와 양수 tabindex 없음", t4_16_tab_order),
+    ("키보드만으로 추가, 현재가, 목표 비중, 삭제, 내보내기, 불러오기", t4_16_keyboard),
+    ("aria-live, aria-describedby, caption 과 scope", t4_16_aria),
+    ("04 3절 금지 요소 0 건", t4_16_forbidden),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------
