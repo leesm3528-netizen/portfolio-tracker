@@ -767,6 +767,95 @@ SCENARIOS["T4-11"] = [
 ]
 
 
+# T4-12 목표 비중 입력 (docs/05_작업지시서.md T4-12 검증 방법)
+
+TARGET_IDS = ("target-stock", "target-bond", "target-cash", "target-other")
+VE_13 = "목표 비중은 0 이상 100 이하의 숫자로 입력하세요."
+VE_14 = "목표 비중은 소수 첫째 자리까지 입력할 수 있습니다."
+
+
+def target_values(run):
+    return [run.page.input_value("#" + i) for i in TARGET_IDS]
+
+
+def stored_targets(run):
+    data = stored_data(run)
+    return None if data is None else data["targets"]
+
+
+def t4_12_initial(run):
+    run.open()
+    if target_values(run) != ["0", "0", "0", "0"]:
+        raise AssertionError(f"목표 비중 입력칸 처음 값: {target_values(run)}")
+    run.expect_text("#target-sum", "0.0%")
+
+
+def t4_12_input_and_reload(run):
+    run.open()
+    run.page.fill("#target-stock", "60")
+    run.expect_text("#target-sum", "60.0%")
+    if stored_targets(run) != {"stock": 60, "bond": 0, "cash": 0, "other": 0}:
+        raise AssertionError(f"저장된 targets: {stored_targets(run)}")
+    run.page.reload()
+    if target_values(run) != ["60", "0", "0", "0"]:
+        raise AssertionError(f"새로고침 후 입력칸: {target_values(run)}")
+    run.expect_text("#target-sum", "60.0%")
+
+
+def t4_12_sum_100(run):
+    run.open()
+    for target_id, value in zip(TARGET_IDS, ("33.3", "33.3", "33.4", "0")):
+        run.page.fill("#" + target_id, value)
+    run.expect_text("#target-sum", "100.0%")
+    if stored_targets(run) != {"stock": 33.3, "bond": 33.3, "cash": 33.4, "other": 0}:
+        raise AssertionError(f"저장된 targets: {stored_targets(run)}")
+
+
+def t4_12_errors(run):
+    run.open()
+    run.page.fill("#target-bond", "30")
+    before = stored_targets(run)
+    for value, message in (("33.33", VE_14), ("101", VE_13), ("-1", VE_13), ("", VE_13)):
+        run.page.fill("#target-bond", value)
+        run.expect_text("#targets-message", ERROR + message)
+        if stored_targets(run) != before:
+            raise AssertionError(f"{value!r}: 저장값이 바뀌었다 {stored_targets(run)}")
+        if run.page.input_value("#target-bond") != value:
+            raise AssertionError(f"{value!r}: 입력칸 값이 다시 써졌다 {run.page.input_value('#target-bond')!r}")
+    run.expect_text("#target-sum", "30.0%")
+    # 다음 성공 때 오류가 사라진다
+    run.page.fill("#target-bond", "35.5")
+    run.expect_text("#targets-message", "")
+    run.expect_text("#target-sum", "35.5%")
+
+
+def t4_12_typing(run):
+    run.open()
+    field = run.page.locator("#target-cash")
+    field.fill("")
+    field.focus()
+    run.page.keyboard.type("12.5")
+    actual = field.input_value()
+    if actual != "12.5":
+        raise AssertionError(f"한 글자씩 입력한 값: 기대 '12.5', 실제 {actual!r}")
+    focused = run.page.evaluate("document.activeElement.id")
+    if focused != "target-cash":
+        raise AssertionError(f"입력 중 포커스: {focused!r}")
+    run.expect_text("#target-sum", "12.5%")
+    run.expect_text("#targets-message", "")
+    if stored_targets(run)["cash"] != 12.5:
+        raise AssertionError(f"저장된 targets: {stored_targets(run)}")
+
+
+SCENARIOS["T4-12"] = [
+    ("처음 4칸 0 과 합계 0.0%", t4_12_initial),
+    ("주식 60 입력과 새로고침 유지", t4_12_input_and_reload),
+    ("33.3, 33.3, 33.4, 0 합계 100.0%", t4_12_sum_100),
+    ("33.33 VE-14, 101, -1, 빈칸 VE-13 과 저장값 유지", t4_12_errors),
+    ("한 글자씩 입력해도 값과 포커스 유지", t4_12_typing),
+]
+
+
 # ---------------------------------------------------------------------------
 # 시나리오 도우미
 # ---------------------------------------------------------------------------

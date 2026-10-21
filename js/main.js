@@ -1,10 +1,11 @@
 // 상태 보유와 흐름 조율: 검증 -> 상태 교체 -> 저장 -> 재계산 -> 렌더(docs/02_설계문서.md 7.6, 8절).
 // DOM 과 localStorage 에 직접 접근하지 않고, 화면 문장을 만들지 않는다.
 
-import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, showMessage } from "./ui.js";
+import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, setTargetInputs, showMessage } from "./ui.js";
 import { createEmptyData, loadData, saveData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
 import { buildAllocation, buildHoldings, calcPositions, prunePrices, sortTransactions, sumValueByAssetClass, updatePrice } from "./portfolio.js";
+import { parseTargetInput, sumTargets } from "./rebalance.js";
 
 let state;
 
@@ -17,6 +18,7 @@ function buildView(data) {
     transactions: sortTransactions(data.transactions),
     holdings,
     allocation: buildAllocation(sumValueByAssetClass(holdings)),
+    targetSum: sumTargets(data.targets),
   };
 }
 
@@ -73,12 +75,24 @@ const handlers = {
     clearMessage("holdings");
     commit({ ...state, prices: result.value });
   },
+
+  // 실패하면 저장하지 않으므로 이전 저장값이 유지된다(02 7.3). 입력칸 값은 ui.js 가 다시 쓰지 않는다.
+  onTargetInput(assetClass, raw) {
+    const result = parseTargetInput(raw);
+    if (!result.ok) {
+      showMessage("targets", result.error, "error");
+      return;
+    }
+    clearMessage("targets");
+    commit({ ...state, targets: { ...state.targets, [assetClass]: result.value } });
+  },
 };
 
 function init() {
   const loaded = loadData();
   state = loaded.ok ? loaded.value : createEmptyData();
   if (!loaded.ok) showMessage("data", loaded.error, "error");
+  setTargetInputs(state.targets);
   bindEvents(handlers);
   render();
 }

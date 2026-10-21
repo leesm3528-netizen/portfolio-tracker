@@ -1,7 +1,7 @@
 // 모든 DOM 접근: 이벤트 등록, 폼 값 읽기, 표 렌더링, 메시지 문장, 숫자 표시 형식. 함수 형식은 docs/02_설계문서.md 7.5 다.
 // 계산 공식과 입력 검증 규칙을 두지 않는다. portfolio.js 에서 상수만 import 한다(02 2절).
 
-import { ASSET_CLASS_LABELS, CASH_NAME, TRANSACTION_TYPE_LABELS } from "./portfolio.js";
+import { ASSET_CLASSES, ASSET_CLASS_LABELS, CASH_NAME, TRANSACTION_TYPE_LABELS } from "./portfolio.js";
 
 // 01 5.2~5.4 의 메시지 문구(머리말 제외). 글자를 바꾸지 않는다(02 4.3).
 const MESSAGES = {
@@ -85,6 +85,7 @@ const formatPrice = numberFormat({ minimumFractionDigits: 0, maximumFractionDigi
 const formatQuantity = numberFormat({ maximumFractionDigits: 0 });
 const formatPercent = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatSignedPercent = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 }, true);
+const formatTargetSum = numberFormat({ minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 // 현재가 미입력 표시(01 FR-05 기준 3, 02 9.3)
 const PRICE_MISSING = "현재가 미입력";
@@ -106,6 +107,7 @@ const SLOTS = {
   "값": (p) => (p.value === undefined ? "없음" : JSON.stringify(p.value)),
   "현재 건수": (p) => formatQuantity(p.currentCount),
   "파일 건수": (p) => formatQuantity(p.fileCount),
+  "합계": (p) => formatTargetSum(p.sum),
 };
 
 // Message 를 머리말 없는 문장으로 만든다(02 4.3).
@@ -134,6 +136,11 @@ function rowHeader(text) {
   const th = cell("th", text);
   th.scope = "row";
   return th;
+}
+
+// 목표 비중 입력칸은 "target-" + 자산군 키 규칙으로 찾는다(02 9.5).
+function targetInput(assetClass) {
+  return byId("target-" + assetClass);
 }
 
 function numberInputValue(input) {
@@ -184,6 +191,16 @@ export function bindEvents(handlers) {
     const raw = numberInputValue(input);
     setTimeout(() => handlers.onPriceChange(name, raw));
   });
+  // 목표 비중은 입력할 때마다(input) 반영한다. 입력칸 값은 다시 쓰지 않는다(02 8절, 7.5).
+  for (const assetClass of ASSET_CLASSES) {
+    const input = targetInput(assetClass);
+    input.addEventListener("input", () => handlers.onTargetInput(assetClass, numberInputValue(input)));
+  }
+}
+
+// 초기화와 불러오기 직후에만 호출한다(02 7.5).
+export function setTargetInputs(targets) {
+  for (const assetClass of ASSET_CLASSES) targetInput(assetClass).value = String(targets[assetClass]);
 }
 
 function deleteButton(tx) {
@@ -288,6 +305,7 @@ export function renderApp(view) {
   renderTransactions(view.transactions);
   renderHoldings(view.holdings);
   renderAllocation(view.allocation);
+  byId("target-sum").textContent = formatTargetSum(view.targetSum) + "%";
   restoreFocus(saved);
 }
 

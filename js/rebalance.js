@@ -1,7 +1,7 @@
 // 목표 비중과 리밸런싱 계산. 공식의 원본은 docs/03_계산규칙.md 11절, 함수 형식은 docs/02_설계문서.md 7.3 이다.
 // DOM 과 브라우저 전역을 쓰지 않고 portfolio.js 만 import 한다.
 
-import { ASSET_CLASSES, calcTotalValue } from "./portfolio.js";
+import { ASSET_CLASSES, calcTotalValue, parseNumber } from "./portfolio.js";
 
 const TARGET_TOTAL = 100;
 
@@ -10,6 +10,13 @@ function targetValueError(value) {
   if (!Number.isFinite(value) || value < 0 || value > 100) return "VE-13";
   if (Math.abs(value * 10 - Math.round(value * 10)) >= 1e-9) return "VE-14";
   return null;
+}
+
+// 목표 비중 입력 규칙(02 7.3). 빈칸과 숫자 아님은 VE-13 이며 0 으로 바꾸지 않는다(05 3.1 M-18).
+export function parseTargetInput(raw) {
+  const value = parseNumber(raw);
+  const code = value === null ? "VE-13" : targetValueError(value);
+  return code === null ? { ok: true, value } : { ok: false, error: { code, params: {} } };
 }
 
 export function createDefaultTargets() {
