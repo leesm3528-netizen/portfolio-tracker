@@ -104,11 +104,10 @@ def t3_01_static_texts(run):
     run.open()
     for selector, expected in STATIC_TEXTS.items():
         run.expect_text(selector, expected)
-    actual = run.page.locator("#allocation-message").text_content().strip()  # hidden 이므로 text_content
+    # 표시 여부는 데이터에 따라 바뀌므로(02 9.4) T4-11 이 확인한다. 여기서는 문구만 본다.
+    actual = run.page.locator("#allocation-message").text_content().strip()
     if actual != IN_03:
         raise AssertionError(f"#allocation-message 텍스트: 기대 {IN_03!r}, 실제 {actual!r}")
-    if not run.page.locator("#allocation-message").is_hidden():
-        raise AssertionError("#allocation-message 가 hidden 이 아니다")
     asset_class = run.page.input_value("#tx-asset-class")
     if asset_class != "":
         raise AssertionError(f"#tx-asset-class 값: 기대 '', 실제 {asset_class!r}")
@@ -710,6 +709,61 @@ SCENARIOS["T4-10"] = [
     ("0, -1, 숫자 아님은 VE-12 와 저장값 유지", t4_10_invalid_price),
     ("R-06 현재가 입력 뒤 Tab 포커스 유지", t4_10_tab_focus),
     ("거래를 모두 삭제하면 현재가 키 삭제", t4_10_prune_on_delete),
+]
+
+
+# T4-11 자산 비중 표 (docs/05_작업지시서.md T4-11 검증 방법)
+# 기대값은 03 14.16(R-01), 14.19(R-04), 14.20(R-05)의 비중 표시값이다.
+
+def expect_allocation(run, rows, total, message_shown):
+    actual = row_texts(run, "allocation-body")
+    if actual != rows:
+        raise AssertionError(f"#allocation-body: 기대 {rows}, 실제 {actual}")
+    run.expect_text("#allocation-total", total)
+    expect_hidden(run, "#allocation-message", not message_shown)
+    if message_shown:
+        run.expect_text("#allocation-message", IN_03)
+    colored = run.page.locator("#allocation-table .value-up, #allocation-table .value-down").count()
+    if colored:
+        raise AssertionError(f"자산 비중 표에 수익/손실 색 클래스 {colored} 개")
+    scopes = run.page.evaluate(
+        "() => [...document.getElementById('allocation-body').rows].map(tr => tr.cells[0].tagName + tr.cells[0].scope)"
+    )
+    if scopes != ["THrow"] * 4:
+        raise AssertionError(f"자산군 칸이 th scope=row 가 아니다: {scopes}")
+
+
+def t4_11_r01(run):
+    run.open_with_data(fixtures.case_data("R-01"))
+    expect_allocation(run, [["주식", "7,000,000", "70.00"], ["채권", "2,000,000", "20.00"],
+                            ["현금", "1,000,000", "10.00"], ["기타", "0", "0.00"]], "10,000,000", False)
+
+
+def t4_11_r04(run):
+    run.open_with_data(fixtures.case_data("R-04"))
+    expect_allocation(run, [["주식", "3,330,000", "33.30"], ["채권", "3,330,000", "33.30"],
+                            ["현금", "3,340,001", "33.40"], ["기타", "0", "0.00"]], "10,000,001", False)
+
+
+def t4_11_r05(run):
+    run.open_with_data(fixtures.case_data("R-05"))
+    expect_allocation(run, [["주식", "0", "-"], ["채권", "0", "-"], ["현금", "0", "-"], ["기타", "0", "-"]], "0", True)
+
+
+def t4_11_empty(run):
+    run.open()
+    expect_allocation(run, [["주식", "0", "-"], ["채권", "0", "-"], ["현금", "0", "-"], ["기타", "0", "-"]], "0", True)
+    # 거래를 추가하면 안내가 사라지고 비중이 보인다
+    add_transaction(run, **C01_FIRST)
+    expect_allocation(run, [["주식", "100,000", "100.00"], ["채권", "0", "0.00"],
+                            ["현금", "0", "0.00"], ["기타", "0", "0.00"]], "100,000", False)
+
+
+SCENARIOS["T4-11"] = [
+    ("R-01 자산군 평가금액, 비중, 합계", t4_11_r01),
+    ("R-04 비중 33.30, 33.30, 33.40, 0.00", t4_11_r04),
+    ("R-05 총평가금액 0 이면 IN-03 과 비중 -", t4_11_r05),
+    ("빈 상태 IN-03, 거래 추가 뒤 비중 표시", t4_11_empty),
 ]
 
 

@@ -312,6 +312,26 @@ td.num {
   text-align: right;
 }
 
+/* 본문 칸은 값 중간(날짜의 하이픈 등)에서 줄바꿈하지 않는다. 좁으면 .table-wrap 안에서 가로로 스크롤한다(10.1).
+   행 머리(th scope=row)는 보통 굵기로 두어 합계 행의 굵은 글자와 구분한다 */
+
+tbody th,
+tbody td {
+  white-space: nowrap;
+}
+
+tbody th {
+  font-weight: var(--font-weight-regular);
+}
+
+/* 10.5 표 안 입력칸(현재가). 표 안 버튼과 같은 높이와 글자, 너비는 내용 기준 */
+
+td input {
+  width: auto;
+  height: var(--control-height-sm);
+  font-size: var(--font-size-sm);
+}
+
 /* 10.7 표 안 버튼 */
 
 td button {

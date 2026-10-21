@@ -83,6 +83,7 @@ const formatSignedWon = numberFormat({ maximumFractionDigits: 0 }, true);
 const formatAvgCost = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatPrice = numberFormat({ minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const formatQuantity = numberFormat({ maximumFractionDigits: 0 });
+const formatPercent = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatSignedPercent = numberFormat({ minimumFractionDigits: 2, maximumFractionDigits: 2 }, true);
 
 // 현재가 미입력 표시(01 FR-05 기준 3, 02 9.3)
@@ -254,6 +255,20 @@ function renderHoldings(holdings) {
   byId("holdings-empty").hidden = holdings.length > 0;
 }
 
+// 자산 비중: 4개 자산군을 항상 표시한다. 총평가금액이 0 이면 비중은 "-" 이고 IN-03(정적 문구)을 보인다(02 9.4).
+// 이 표에는 수익/손실 색을 쓰지 않는다(04 9.2).
+function renderAllocation(allocation) {
+  const rows = allocation.rows.map((row) => {
+    const tr = document.createElement("tr");
+    tr.append(rowHeader(ASSET_CLASS_LABELS[row.assetClass]), cell("td", formatWon(row.value), "num"),
+      cell("td", formatPercent(row.weight), "num"));
+    return tr;
+  });
+  byId("allocation-body").replaceChildren(...rows);
+  byId("allocation-total").textContent = formatWon(allocation.totalValue);
+  byId("allocation-message").hidden = allocation.totalValue !== 0;
+}
+
 // 포커스가 표 안 요소에 있으면 그 data-action 과 data-name(거래 행은 data-id)을 기억한다(02 7.5).
 function focusedControl() {
   const el = document.activeElement;
@@ -272,6 +287,7 @@ export function renderApp(view) {
   const saved = focusedControl();
   renderTransactions(view.transactions);
   renderHoldings(view.holdings);
+  renderAllocation(view.allocation);
   restoreFocus(saved);
 }
 

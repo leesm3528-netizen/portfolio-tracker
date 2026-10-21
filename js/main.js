@@ -4,7 +4,7 @@
 import { bindEvents, clearMessage, confirmAction, renderApp, resetTransactionForm, showMessage } from "./ui.js";
 import { createEmptyData, loadData, saveData } from "./storage.js";
 import { addTransaction, createTransaction, deleteTransaction } from "./transactions.js";
-import { buildHoldings, calcPositions, prunePrices, sortTransactions, updatePrice } from "./portfolio.js";
+import { buildAllocation, buildHoldings, calcPositions, prunePrices, sortTransactions, sumValueByAssetClass, updatePrice } from "./portfolio.js";
 
 let state;
 
@@ -12,9 +12,11 @@ let state;
 function buildView(data) {
   const positions = calcPositions(data.transactions);
   if (!positions.ok) throw new Error(`calcPositions failed: ${positions.error.code}`);
+  const holdings = buildHoldings(positions.value, data.prices);
   return {
     transactions: sortTransactions(data.transactions),
-    holdings: buildHoldings(positions.value, data.prices),
+    holdings,
+    allocation: buildAllocation(sumValueByAssetClass(holdings)),
   };
 }
 
