@@ -1,8 +1,8 @@
-최종 갱신: 2026-10-21 / 갱신자: Claude Code (Opus)
+최종 갱신: 2026-10-22 / 갱신자: Claude Code (Opus)
 
 ## 현재 단계
 
-5단계 T5-01, T5-02 완료. T5-03 은 사용자 승인 대기. 사용자가 2026-10-21 5단계 진행을 승인했고 T5-01, T5-02 를 마쳤다. T5-03(저장소 생성, push, Pages 활성화)은 외부 공개 작업이라 따로 사용자 승인을 받은 뒤에만 한다(05 3.1 M-26). 승인되지 않으면 5단계 마지막 작업은 T5-02 다(05 1.6). 01 1.3 MVP 완료 판단 중 1번(FR 수용 기준)과 2번(verify.mjs)은 충족했고, 3번(GitHub Pages 배포 주소에서 NFR 만족)은 5단계(T5-03, 사용자 승인 시) 이후 확인한다.
+5단계 완료, MVP 완료(T1-01~T5-03). 사용자가 2026-10-22 실제 배포를 승인해 T5-03 을 마쳤다. 배포 주소는 https://leesm3528-netizen.github.io/portfolio-tracker/ , 저장소는 https://github.com/leesm3528-netizen/portfolio-tracker (Public, main 브랜치 / (root) 게시)다. 01 1.3 MVP 완료 판단 1번(FR 수용 기준), 2번(verify.mjs), 3번(배포 주소에서 핵심 시나리오 통과)을 충족했다. 첫 화면 1초 기준은 배포 주소에서 네트워크 상태에 따라 넘을 때가 있다(알려진 문제 3). 다음 작업은 확장 작업이며 사용자 승인 뒤에만 시작한다(05 9.1).
 
 T4-17 FR 수용 기준 확인 요약(근거는 verify_ui.py 시나리오 작업 ID 와 verify.mjs):
 
@@ -64,24 +64,23 @@ NFR 은 NFR-03(5,000건 저장과 새로고침), NFR-04(T4-16), NFR-05(T4-16), N
 
 ## 다음 할 작업 (작업지시서 번호)
 
-1. T5-03 GitHub 저장소 생성, push, Pages 배포 (사용자 승인 시에만 수행. 05 3.1 M-26)
+1. 없음(MVP 완료). 확장 작업 E-01~E-05(05 9절)는 사용자가 고르고 승인한 것만 시작한다.
 
 ## 알려진 문제
 
 1. 외부 스킬 doc-coauthoring, frontend-design, webapp-testing 이 설치되어 있지 않다. skill-creator 만 있다. 같은 원칙으로 진행한다(CLAUDE.md 2절). 화면 검증은 프로젝트 스킬 skills/ui-verify(T2-05)로 대신한다. 관련 작업: T3-01 이후 화면 작업.
 2. 화면 검증 환경: 작성자 PC 에는 Python 3.14(`py`), playwright 1.64.0, Chromium 이 설치되어 있다(2026-10-21 확인). 다른 PC 에서는 `py -m pip install playwright`, `py -m playwright install chromium` 을 먼저 실행한다. Git Bash 에서 verify_ui.py 출력을 파이프로 받으면 한글이 깨지므로 `PYTHONUTF8=1` 을 붙인다(skills/ui-verify/SKILL.md 4.1). 관련 작업: T3-01 이후 화면 작업.
-3. 화면 검증은 로컬 Chromium(Playwright) 에서만 했다. 01 NFR-02 의 Firefox, Safari, Edge 와 GitHub Pages 주소(01 1.3 의 3번, NFR-01)는 아직 확인하지 않았다. 재현: `py skills/ui-verify/scripts/verify_ui.py --base-url {배포 주소}`. 관련 작업: T5-03.
+3. 화면 검증은 Chromium(Playwright) 에서만 했다. 배포 주소에서 핵심 시나리오 25개(T4-07, T4-13, T4-14, T4-15)와 전체 67개 중 66개가 통과했다. 실패 1개는 T4-17 의 첫 화면 1초 기준이다(거래 5,000건, 배포 주소 측정 920~1,596ms, 로컬은 통과). 거래 추가/삭제/현재가 변경은 배포 주소에서도 81~154ms 로 200ms 이내다. 네트워크 지연이 포함되는 측정이라 05 3.1 M-39 로 기록했다. 01 NFR-02 의 Firefox, Safari, Edge 는 아직 확인하지 않았다. 재현: `py skills/ui-verify/scripts/verify_ui.py T4-17 --base-url https://leesm3528-netizen.github.io/portfolio-tracker/`. 관련 작업: 없음(성능 개선이나 브라우저 확인을 할 때).
 4. 보유 현황에서 "현재가 미입력" 행은 입력칸 아래 문구 때문에 다른 행보다 약 15px 높고, 1024px 이상 리밸런싱 결과 표 열 머리는 두 줄이다. 02 9.3, 04 10.9, 04 10.2 를 따른 결과라 고치지 않았다(05 3.1 M-36). 바꾸려면 04 를 먼저 고친다. 관련 작업: 없음(디자인 변경 시).
-5. README 6.1 배포 절차(웹 화면 또는 `gh repo create` 로 저장소 생성, `git remote add` 와 push, Settings -> Pages 설정, 게시 대기)는 실제 GitHub 에서 실행해 보지 않았다. 외부 공개 작업이라 T5-03 승인 전에는 원격 추가, push, 저장소 생성을 하지 않는다. 로컬에서는 `git branch --show-current` 가 main 임과 `gh repo create` 옵션(`--public --source --remote --push`, gh 2.102.0 도움말)만 확인했다. 재현: T5-03 에서 README 6.1 을 그대로 따라 한다. 관련 작업: T5-03.
 
 ## 다음 작업자에게 주의사항
 
 1. 이전 작업의 대화 기록은 볼 수 없다. 이 파일, AGENTS.md, docs/, skills/ 만이 근거다. 사용자와 새로 정한 내용은 반드시 원본 문서에 적는다.
-2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-39 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-38 은 권장안대로 해소되었다.
+2. 1단계의 모든 결정은 확정되었다. 결정 내용은 docs/05_작업지시서.md 3절의 "원본" 열 위치에 있다. 구현할 때는 3절이 아니라 원본 문서를 읽는다. 새 불일치가 생기면 3.1 에 다음 번호(현재 M-40 부터) "미해결" 로 추가하고 사용자에게 묻는다. M-27~M-39 는 권장안대로 해소되었다.
 3. 화면 메시지 문구의 원본은 docs/01_요구사항.md 5절 하나다. 계산과 검증 모듈은 문장을 만들지 않고 `{ code, params }` 만 반환한다(docs/02_설계문서.md 4.1, 11절).
 4. index.html 은 데이터 0 건 상태의 정적 뼈대이고(05 3.1 M-29) ui.js 가 렌더 때 hidden 을 바꾼다. JS 가 붙이는 클래스 스타일은 그 클래스를 처음 쓰는 작업에서 css/style.css 에 추가한다(M-30). 화면 작업은 verify_ui.py 에 작업 ID 로 시나리오를 추가하고 이전 시나리오와 함께 실행한다. 메시지 문장은 ui.js 의 `MESSAGES` 와 치환 자리 표 `SLOTS` 로 만든다. VE-15 의 {합계} 자리는 T4-12 에서 `SLOTS` 에 추가했다. 숫자 입력칸 값은 ui.js 내부 `numberInputValue` 로 읽는다(M-32). 현재가 change 처리는 setTimeout 으로 미루므로(M-33) 화면 검증에서 현재가를 바꾼 뒤에는 verify_ui.py 의 `settle(run)` 으로 기다린다.
 5. 결정 항목은 "03 D-01" 처럼 문서 번호를 붙여 부른다. 문서마다 D 번호가 따로 매겨져 있다.
 6. 모든 문서에 이모지와 장식 기호를 쓰지 않는다. 화살표는 "->" 만 쓴다. 문체는 평서문 "~한다/~이다" 다. 화면 문구 인용만 "~합니다/~하세요" 다.
 7. 사용처(다른 앱 모듈 또는 verify.mjs) 없는 export 는 0 개다(T4-17). 새 export 는 02 7절에 먼저 적는다. 계산과 검증 모듈의 실패 Result 는 portfolio.js 의 `fail`, 객체 판정은 `isPlainObject` 를 쓴다(M-37). 거래 내역 렌더는 거래 객체 identity 로 행을 다시 쓰므로(M-38) 거래 객체를 제자리에서 고치는 코드를 넣지 않는다.
 8. 진행 상태는 `git log --oneline` 으로도 확인한다. 커밋 메시지는 작업 ID 로 시작한다.
-9. T5-03 은 사용자에게 저장소 이름, 공개 여부, 계정을 확인받은 뒤에만 한다(05 T5-03 작업 내용 1). 절차는 README 6.1 이고, 빠진 단계가 보이면 README 를 고친다(05 T5-02 검증 방법). `.nojekyll` 은 넣지 않는다. 밑줄로 시작하는 파일과 폴더가 없고 앱 파일에 YAML 머리가 없어 Jekyll 처리 그대로 게시되기 때문이다(README 6.3). Pages 빌드가 Jekyll 단계에서 실패할 때만 사용자 승인을 받고 추가한다. 배포 주소는 README 와 이 파일에 적는다.
+9. main 에 push 하면 GitHub Pages 가 다시 게시한다. 공개 저장소이므로 push 전에 비밀 정보가 없는지 확인한다. `.nojekyll` 없이 게시가 성공했다(README 6.3). 밑줄로 시작하는 파일이나 폴더를 추가하면 게시되지 않으므로 그 전에 README 6.3 을 본다. 배포 후에는 `--base-url` 로 핵심 시나리오를 다시 실행한다(README 6.4).

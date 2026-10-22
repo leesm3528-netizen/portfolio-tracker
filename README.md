@@ -16,7 +16,12 @@
 
 ## 1. 상태
 
-MVP 기능은 모두 구현되어 있고 README 사용법과 배포 방법을 작성했다. GitHub Pages 실제 배포는 사용자 승인 뒤 한다. 진행 상황은 HANDOFF.md 를 본다.
+MVP 완료(1~5단계). GitHub Pages 로 배포되어 있다.
+
+- 배포 주소: https://leesm3528-netizen.github.io/portfolio-tracker/
+- 저장소: https://github.com/leesm3528-netizen/portfolio-tracker
+
+확장 기능(docs/05_작업지시서.md 9절)은 사용자 승인 뒤 시작한다. 진행 상황은 HANDOFF.md 를 본다.
 
 ## 2. 기능
 
@@ -173,7 +178,13 @@ GitHub Pages 정적 호스팅으로 배포한다. 빌드 단계, 서버 코드, 
    git push -u origin main
    ```
 
-3. GitHub 의 저장소 페이지에서 Settings -> Pages 를 연다. Build and deployment 에서 Source 를 "Deploy from a branch" 로, Branch 를 "main" 으로, 폴더를 "/ (root)" 로 고르고 Save 를 누른다.
+3. GitHub 의 저장소 페이지에서 Settings -> Pages 를 연다. Build and deployment 에서 Source 를 "Deploy from a branch" 로, Branch 를 "main" 으로, 폴더를 "/ (root)" 로 고르고 Save 를 누른다. gh CLI 로는 같은 설정을 아래 명령으로 한다(T5-03 에서 이 방법으로 배포했다).
+
+   ```
+   gh api -X POST repos/{사용자 이름}/{저장소 이름}/pages -f "source[branch]=main" -f "source[path]=/"
+   ```
+
+   게시 상태는 `gh api repos/{사용자 이름}/{저장소 이름}/pages/builds/latest --jq .status` 로 본다. "built" 이면 끝난 것이다.
 4. 게시를 기다린다. 저장소 Actions 탭의 "pages build and deployment" 실행이 끝나면(보통 몇 분) Settings -> Pages 위쪽에 게시 주소가 나온다.
 5. `https://{사용자 이름}.github.io/{저장소 이름}/` 을 연다. 실행이 끝나기 전에는 404 가 나올 수 있으므로 몇 분 뒤 다시 연다.
 6. 6.4 의 확인을 한다.
